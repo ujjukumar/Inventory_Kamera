@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "InventoryKamera.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "InventoryKamera.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

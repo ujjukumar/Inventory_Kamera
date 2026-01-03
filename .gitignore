@@ -55,3 +55,5 @@ nunit-*.xml
 
 # Visual Studio temporary files
 /.vs
+InventoryKamera.Core/.vs
+InventoryKamera.WinUI/.vs
