@@ -215,6 +215,26 @@ namespace InventoryKamera
 
         private void StartButton_Clicked(object sender, EventArgs e)
         {
+            var executables = Settings.Executables;
+            bool gameRunning = false;
+            if (executables != null)
+            {
+                foreach (var exe in executables)
+                {
+                    if (Process.GetProcessesByName(exe).Length > 0)
+                    {
+                        gameRunning = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!gameRunning)
+            {
+                MessageBox.Show("Genshin Impact process not found. Please ensure the game is running.", "Game Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             GC.Collect();
 
             UserInterface.ResetAll();
@@ -282,7 +302,6 @@ namespace InventoryKamera
 
                         // Add navigation delay
                         Navigation.SetDelay(ScannerDelayValue(Delay));
-
 
                         // The Data object of json object
                         data.GatherData(cancellationToken);

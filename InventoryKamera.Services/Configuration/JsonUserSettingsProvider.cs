@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
-using System.Windows.Forms;
+
 
 namespace InventoryKamera.Properties
 {
@@ -22,7 +22,7 @@ namespace InventoryKamera.Properties
 
         public static string SettingsDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            Path.GetFileNameWithoutExtension(Application.ExecutablePath));
+            System.Diagnostics.Process.GetCurrentProcess().ProcessName);
 
         private static string SettingsFile => Path.Combine(SettingsDirectory, SettingsFileName);
 
@@ -30,7 +30,7 @@ namespace InventoryKamera.Properties
 
         public override string ApplicationName
         {
-            get => Path.GetFileNameWithoutExtension(Application.ExecutablePath);
+            get => System.Diagnostics.Process.GetCurrentProcess().ProcessName;
             set { }
         }
 

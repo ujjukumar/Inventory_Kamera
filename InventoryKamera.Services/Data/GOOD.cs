@@ -91,7 +91,7 @@ namespace InventoryKamera
             genshinData.Inventory.AllMaterials.ToList().ForEach(material => Materials.Add(material.name, material.count));
         }
 
-        internal void WriteToJSON(string outputDirectory)
+        public void WriteToJSON(string outputDirectory)
         {
             // Creates directory if doesn't exist
             Directory.CreateDirectory(outputDirectory);

@@ -14,6 +14,15 @@
     </Window.SystemBackdrop>
 
     <Grid>
+        <NavigationView x:Name="NavView" 
+                        PaneDisplayMode="Left"
+                        IsSettingsVisible="True">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Icon="Camera" Content="Scanner" Tag="ScannerPage" IsSelected="True"/>
+                <NavigationViewItem Icon="Library" Content="Inventory" Tag="InventoryPage"/>
+            </NavigationView.MenuItems>
 
+            <Frame x:Name="ContentFrame"/>
+        </NavigationView>
     </Grid>
 </Window>

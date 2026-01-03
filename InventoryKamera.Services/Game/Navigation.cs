@@ -5,7 +5,7 @@ using System.Drawing.Imaging;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Windows.Forms;
+
 using InventoryKamera.Properties;
 using WindowsInput;
 using WindowsInput.Native;
@@ -119,34 +119,7 @@ namespace InventoryKamera
 
 		#endregion Window Capturing
 
-		#region Image Displaying
 
-		public static void DisplayBitmap(Bitmap bm, string text = "Image")
-		{
-			Form form = new Form();
-			
-			int padding = 5;
-
-			form.StartPosition = FormStartPosition.Manual;
-			form.Location = Screen.PrimaryScreen.WorkingArea.Location;
-			form.Size = new Size(bm.Width + 5*padding, bm.Height + 10*padding);
-			form.Text = text;
-			form.BackColor = Color.Black;
-
-			PictureBox pb = new PictureBox
-			{
-				Dock = DockStyle.Fill,
-				Image = bm,
-				Padding = new Padding(5),
-				//Size = new Size(bm.Width + 2*padding, bm.Height + 2*padding),
-			};
-
-			form.Controls.Add(pb);
-			Application.Run(form);
-			
-		}
-
-		#endregion Image Displaying
 
 		#region Game Menu Navigation
 
@@ -401,9 +374,13 @@ namespace InventoryKamera
 			return SetCursor(point.X, point.Y);
 		}
 
+		[DllImport("user32.dll")]
+		public static extern int GetSystemMetrics(int nIndex);
+
 		public static void Click()
 		{
-			if (SystemInformation.MouseButtonsSwapped)
+			// SM_SWAPBUTTON = 23
+			if (GetSystemMetrics(23) != 0)
 				sim.Mouse.RightButtonClick();
 			else
 				sim.Mouse.LeftButtonClick();

@@ -26,6 +26,7 @@ namespace InventoryKamera.WinUI
         public MainWindow()
         {
             InitializeComponent();
+            ExtendsContentIntoTitleBar = true;
         }
     }
 }

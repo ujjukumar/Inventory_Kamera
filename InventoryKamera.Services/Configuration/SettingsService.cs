@@ -3,7 +3,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Windows.Forms;
+
 
 namespace InventoryKamera.Properties
 {
@@ -59,7 +59,7 @@ namespace InventoryKamera.Properties
         {
             SettingsDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                Path.GetFileNameWithoutExtension(Application.ExecutablePath));
+                System.Diagnostics.Process.GetCurrentProcess().ProcessName);
 
             SettingsFilePath = Path.Combine(SettingsDirectory, SettingsFileName);
 

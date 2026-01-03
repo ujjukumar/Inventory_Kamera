@@ -17,7 +17,7 @@ namespace InventoryKamera
 
         private const int numEngines = 8;
 
-        private static readonly string tesseractDatapath = $".\\TesseractData";
+        private static readonly string tesseractDatapath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TesseractData");
         private static readonly string tesseractLanguage = "genshin_fast_09_04_21";
 
         internal static Dictionary<string, string> Stats = new Dictionary<string, string>
@@ -77,7 +77,7 @@ namespace InventoryKamera
 
         internal static Dictionary<string, string> Weapons, DevItems, Materials, Elements;
 
-        internal static Dictionary<string, JObject> Characters, Artifacts;
+        public static Dictionary<string, JObject> Characters, Artifacts;
 
         static GenshinProcesor()
         {
@@ -969,7 +969,7 @@ namespace InventoryKamera
 
         #endregion Image Operations
 
-        internal static string ConvertToGood(this string text)
+        public static string ConvertToGood(this string text)
         {
             text = text.ToLower();
             var pascal = CultureInfo.GetCultureInfo("en-US").TextInfo.ToTitleCase(text);

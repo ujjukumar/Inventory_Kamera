@@ -1,0 +1,4 @@
+## Gemini Added Memories
+- The Inventory-Kamera application has been modernized to use Microsoft.Extensions.Hosting and Dependency Injection for logging (ILogger<T>) in the core InventoryKamera class, replacing static NLog usage. Program.cs now sets up a Generic Host.
+- Refactored all Scraper classes (Weapon, Artifact, Character, Material, Inventory) to use Dependency Injection and ILogger, removing static NLog dependencies. Fixed numerous static/instance method accessibility issues. Registered all scrapers in the Generic Host service container.
+- Fixed a crash issue when the game process is not found by replacing `NullReferenceException` with `InvalidOperationException` in `Navigation.Initialize`. Also removed NLog dependency from `Navigation.cs`.

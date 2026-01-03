@@ -54,6 +54,7 @@ TestResult.xml
 nunit-*.xml
 
 # Visual Studio temporary files
-/.vs
-InventoryKamera.Core/.vs
-InventoryKamera.WinUI/.vs
+*/.vs
+inventorylists/*
+GenshinData/*
+.vs/

@@ -243,7 +243,7 @@ namespace InventoryKamera
 
 				// Check for lock color
 				Color lockedColor = Color.FromArgb(255, 70, 80, 100); // Dark area around red lock
-				Color lockStatus = bm[w_lock].GetPixel(5, 5);
+				Color lockStatus = bm[w_lock].GetPixel(10, 10);
 				locked = GenshinProcesor.CompareColors(lockedColor, lockStatus);
 
 				List<Task> tasks = new List<Task>();
