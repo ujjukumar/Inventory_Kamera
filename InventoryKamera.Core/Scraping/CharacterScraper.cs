@@ -46,15 +46,18 @@ namespace InventoryKamera
 				{
 					if (!scanned.Contains(character.NameGOOD))
 					{
-						                    scanned.Add(character.NameGOOD);
-						                    UserInterface.IncrementCharacterCount();
-						                    _logger.LogInformation("Scanned {Name} successfully", character.NameGOOD);
-						                }
-						                				{
-						                					if (character.IsValid())
-						                					{						_logger.LogInformation("Prevented {Name} duplicate scan", character.NameGOOD);
-						                					}
-						                				}				}
+						scanned.Add(character.NameGOOD);
+						Characters.Add(character);
+						if (string.IsNullOrEmpty(first)) first = character.NameGOOD;
+						UserInterface.IncrementCharacterCount();
+						_logger.LogInformation("Scanned {Name} successfully", character.NameGOOD);
+						counter++;
+					}
+					else
+					{
+						_logger.LogInformation("Prevented {Name} duplicate scan", character.NameGOOD);
+					}
+				}
 				else
 				{
 					string error = "";
