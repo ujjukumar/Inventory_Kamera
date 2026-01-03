@@ -7,7 +7,6 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Tesseract;
-using InventoryKamera.Helpers;
 using static InventoryKamera.Helpers.BitmapHelper;
 
 namespace InventoryKamera
@@ -18,7 +17,7 @@ namespace InventoryKamera
 
         private const int numEngines = 8;
 
-        private static readonly string tesseractDatapath = $".\\tessdata";
+        private static readonly string tesseractDatapath = $".\\TesseractData";
         private static readonly string tesseractLanguage = "genshin_fast_09_04_21";
 
         internal static Dictionary<string, string> Stats = new Dictionary<string, string>

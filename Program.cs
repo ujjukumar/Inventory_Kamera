@@ -12,6 +12,7 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        AttachConsole(-1);
         ConfigureLogging();
         try
         {
@@ -65,12 +66,21 @@ internal static class Program
             Layout = "${date:format=yyyy-MM-dd HH\\:mm\\:ss.fff}|${level:uppercase=true}|${logger:shortName=True}|${message:withexception=true}",
         };
 
+        var logDebugger = new NLog.Targets.DebuggerTarget("logdebugger")
+        {
+            Layout = "${date:format=yyyy-MM-dd HH\\:mm\\:ss.fff}|${level:uppercase=true}|${logger:shortName=True}|${message:withexception=true}",
+        };
+
+        config.AddRule(LogLevel.Debug, LogLevel.Fatal, logDebugger);
         config.AddRule(LogLevel.Debug, LogLevel.Fatal, logConsole);
         config.AddRule(LogLevel.Debug, LogLevel.Fatal, debugFile);
         config.AddRule(LogLevel.Info, LogLevel.Fatal, logFile);
 
         LogManager.Configuration = config;
     }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern bool AttachConsole(int dwProcessId);
 
     // ***also dllimport of that function***
     [System.Runtime.InteropServices.DllImport("user32.dll")]

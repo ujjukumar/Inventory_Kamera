@@ -2,7 +2,7 @@
 
 namespace InventoryKamera.Helpers;
 
-public static class RectangleExtensions
+public static class Extensions
 {
     /// <summary>
     /// Calculates the center point of the specified rectangle. Replicates the Accord Center() method

@@ -1,20 +1,12 @@
 ﻿using InventoryKamera.ui;
-using Newtonsoft.Json;
 using NHotkey;
 using NHotkey.WindowsForms;
 using Octokit;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Windows.Forms;
 using WindowsInput.Native;
 using InventoryKamera.Properties;
 using Application = System.Windows.Forms.Application;
@@ -54,7 +46,7 @@ namespace InventoryKamera
                 ArtifactOutput_TextBox,
                 CharacterName_PictureBox,
                 CharacterLevel_PictureBox,
-                new[] { CharacterTalent1_PictureBox, CharacterTalent2_PictureBox, CharacterTalent3_PictureBox },
+                [CharacterTalent1_PictureBox, CharacterTalent2_PictureBox, CharacterTalent3_PictureBox],
                 CharacterOutput_TextBox,
                 WeaponsScannedCount_Label,
                 WeaponsMax_Labell,
@@ -68,20 +60,13 @@ namespace InventoryKamera
 
         private double ScannerDelayValue(int value)
         {
-            switch (value)
+            return value switch
             {
-                case 0:
-                    return 0.5;
-
-                case 1:
-                    return 1;
-
-                case 2:
-                    return 1.5;
-
-                default:
-                    return 1;
-            }
+                0 => 0.5,
+                1 => 1,
+                2 => 1.5,
+                _ => 1,
+            };
         }
 
         private void Hotkey_Pressed(object sender, HotkeyEventArgs e)
@@ -313,7 +298,7 @@ namespace InventoryKamera
                         Logger.Info("Exported data");
 
                         UserInterface.SetProgramStatus("Finished");
-                        OpenOptimizerDialog(good);
+                        //OpenOptimizerDialog(good);
                     }
                     catch (OperationCanceledException)
                     {
@@ -571,7 +556,9 @@ namespace InventoryKamera
 
         private void MainForm_Shown(object sender, EventArgs e)
         {
+#if !DEBUG
             CheckForKameraUpdates();
+#endif
             CheckForGenshinUpdates();
         }
 
@@ -659,9 +646,9 @@ namespace InventoryKamera
             new ExecutablesForm().Show();
         }
 
-		private void ErrorLog_Label_Click(object sender, EventArgs e)
-		{
-			Process.Start(new ProcessStartInfo(@"logging") { UseShellExecute = true });
-		}
-	}
+        private void ErrorLog_Label_Click(object sender, EventArgs e)
+        {
+            Process.Start(new ProcessStartInfo(@"logging") { UseShellExecute = true });
+        }
+    }
 }

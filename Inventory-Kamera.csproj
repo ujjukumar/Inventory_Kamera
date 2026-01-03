@@ -17,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-	<None Include="tessdata\*.traineddata" CopyToOutputDirectory="PreserveNewest" />
+	<None Include="TesseractData\*.traineddata" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

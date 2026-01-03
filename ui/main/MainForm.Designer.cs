@@ -550,14 +550,14 @@
             // OutputPath_TextBox
             // 
             this.OutputPath_TextBox.BackColor = System.Drawing.Color.White;
-            this.OutputPath_TextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.Settings.Default, "OutputPath", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.OutputPath_TextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "OutputPath", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.OutputPath_TextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.OutputPath_TextBox.Location = new System.Drawing.Point(48, -1);
             this.OutputPath_TextBox.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.OutputPath_TextBox.Name = "OutputPath_TextBox";
             this.OutputPath_TextBox.Size = new System.Drawing.Size(386, 18);
             this.OutputPath_TextBox.TabIndex = 79;
-            this.OutputPath_TextBox.Text = global::InventoryKamera.Properties.Settings.Default.OutputPath;
+            this.OutputPath_TextBox.Text = global::InventoryKamera.Properties.SettingsService.Instance.Settings.OutputPath;
             // 
             // FileSelectButton
             // 
@@ -846,9 +846,9 @@
             // EquipWeaponsCheckBox
             // 
             this.EquipWeaponsCheckBox.AutoSize = true;
-            this.EquipWeaponsCheckBox.Checked = global::InventoryKamera.Properties.Settings.Default.EquipWeapons;
+            this.EquipWeaponsCheckBox.Checked = global::InventoryKamera.Properties.SettingsService.Instance.Settings.EquipWeapons;
             this.EquipWeaponsCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.EquipWeaponsCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.Settings.Default, "EquipWeapons", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.EquipWeaponsCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "EquipWeapons", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.EquipWeaponsCheckBox.Location = new System.Drawing.Point(129, 88);
             this.EquipWeaponsCheckBox.Name = "EquipWeaponsCheckBox";
             this.EquipWeaponsCheckBox.Size = new System.Drawing.Size(102, 17);
@@ -860,9 +860,9 @@
             // EquipArtifactsCheckBox
             // 
             this.EquipArtifactsCheckBox.AutoSize = true;
-            this.EquipArtifactsCheckBox.Checked = global::InventoryKamera.Properties.Settings.Default.EquipArtifacts;
+            this.EquipArtifactsCheckBox.Checked = global::InventoryKamera.Properties.SettingsService.Instance.Settings.EquipArtifacts;
             this.EquipArtifactsCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.EquipArtifactsCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.Settings.Default, "EquipArtifacts", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.EquipArtifactsCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "EquipArtifacts", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.EquipArtifactsCheckBox.Location = new System.Drawing.Point(328, 88);
             this.EquipArtifactsCheckBox.Name = "EquipArtifactsCheckBox";
             this.EquipArtifactsCheckBox.Size = new System.Drawing.Size(94, 17);
@@ -878,8 +878,8 @@
             // LogScreenshotsCheckBox
             // 
             this.LogScreenshotsCheckBox.AutoSize = true;
-            this.LogScreenshotsCheckBox.Checked = global::InventoryKamera.Properties.Settings.Default.LogScreenshots;
-            this.LogScreenshotsCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.Settings.Default, "LogScreenshots", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.LogScreenshotsCheckBox.Checked = global::InventoryKamera.Properties.SettingsService.Instance.Settings.LogScreenshots;
+            this.LogScreenshotsCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "LogScreenshots", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.LogScreenshotsCheckBox.Location = new System.Drawing.Point(10, 238);
             this.LogScreenshotsCheckBox.Name = "LogScreenshotsCheckBox";
             this.LogScreenshotsCheckBox.Size = new System.Drawing.Size(120, 17);
@@ -909,17 +909,17 @@
             // 
             // NumOfCharToScanControl
             // 
-            this.NumOfCharToScanControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.Settings.Default, "NumOfCharToScan", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.NumOfCharToScanControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "NumOfCharToScan", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.NumOfCharToScanControl.Location = new System.Drawing.Point(154, 129);
             this.NumOfCharToScanControl.Name = "NumOfCharToScanControl";
             this.NumOfCharToScanControl.Size = new System.Drawing.Size(39, 20);
             this.NumOfCharToScanControl.TabIndex = 110;
             this.ZeroMeansAllTooltips.SetToolTip(this.NumOfCharToScanControl, "Selecting 0 scans all characters");
-            this.NumOfCharToScanControl.Value = global::InventoryKamera.Properties.Settings.Default.NumOfCharToScan;
+            this.NumOfCharToScanControl.Value = global::InventoryKamera.Properties.SettingsService.Instance.Settings.NumOfCharToScan;
             // 
             // SortByObtainedControl
             // 
-            this.SortByObtainedControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.Settings.Default, "SortByObtained", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.SortByObtainedControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "SortByObtained", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.SortByObtainedControl.Location = new System.Drawing.Point(10, 184);
             this.SortByObtainedControl.Maximum = new decimal(new int[] {
             10,
@@ -930,35 +930,35 @@
             this.SortByObtainedControl.Size = new System.Drawing.Size(45, 20);
             this.SortByObtainedControl.TabIndex = 108;
             this.ZeroMeansAllTooltips.SetToolTip(this.SortByObtainedControl, "Selecting 0 scans all Artifacts");
-            this.SortByObtainedControl.Value = global::InventoryKamera.Properties.Settings.Default.SortByObtained;
+            this.SortByObtainedControl.Value = global::InventoryKamera.Properties.SettingsService.Instance.Settings.SortByObtained;
             // 
             // wandererNameTextBox
             // 
-            this.wandererNameTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.Settings.Default, "WandererName", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.wandererNameTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "WandererName", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.wandererNameTextBox.Location = new System.Drawing.Point(416, 129);
             this.wandererNameTextBox.Name = "wandererNameTextBox";
             this.wandererNameTextBox.Size = new System.Drawing.Size(169, 20);
             this.wandererNameTextBox.TabIndex = 105;
-            this.wandererNameTextBox.Text = global::InventoryKamera.Properties.Settings.Default.WandererName;
+            this.wandererNameTextBox.Text = global::InventoryKamera.Properties.SettingsService.Instance.Settings.WandererName;
             this.wandererNameTextBox.TextChanged += new System.EventHandler(this.ValidateCustomName);
             this.wandererNameTextBox.MouseHover += new System.EventHandler(this.DisplayCustomNameTooltip);
             this.wandererNameTextBox.ParentChanged += new System.EventHandler(this.ValidateCustomName2);
             // 
             // travelerNameTextBox
             // 
-            this.travelerNameTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.Settings.Default, "TravelerName", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.travelerNameTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "TravelerName", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.travelerNameTextBox.Location = new System.Drawing.Point(416, 103);
             this.travelerNameTextBox.Name = "travelerNameTextBox";
             this.travelerNameTextBox.Size = new System.Drawing.Size(169, 20);
             this.travelerNameTextBox.TabIndex = 101;
-            this.travelerNameTextBox.Text = global::InventoryKamera.Properties.Settings.Default.TravelerName;
+            this.travelerNameTextBox.Text = global::InventoryKamera.Properties.SettingsService.Instance.Settings.TravelerName;
             this.travelerNameTextBox.TextChanged += new System.EventHandler(this.ValidateCustomName);
             this.travelerNameTextBox.MouseHover += new System.EventHandler(this.DisplayCustomNameTooltip);
             this.travelerNameTextBox.ParentChanged += new System.EventHandler(this.ValidateCustomName);
             // 
             // numericUpDown1
             // 
-            this.numericUpDown1.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.Settings.Default, "MinimumArtifactLevel", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.numericUpDown1.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "MinimumArtifactLevel", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.numericUpDown1.Location = new System.Drawing.Point(413, 62);
             this.numericUpDown1.Maximum = new decimal(new int[] {
             20,
@@ -968,11 +968,11 @@
             this.numericUpDown1.Name = "numericUpDown1";
             this.numericUpDown1.Size = new System.Drawing.Size(48, 20);
             this.numericUpDown1.TabIndex = 95;
-            this.numericUpDown1.Value = global::InventoryKamera.Properties.Settings.Default.MinimumArtifactLevel;
+            this.numericUpDown1.Value = global::InventoryKamera.Properties.SettingsService.Instance.Settings.MinimumArtifactLevel;
             // 
             // MinimumWeaponLevelControl
             // 
-            this.MinimumWeaponLevelControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.Settings.Default, "MinimumWeaponLevel", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.MinimumWeaponLevelControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "MinimumWeaponLevel", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.MinimumWeaponLevelControl.Location = new System.Drawing.Point(224, 62);
             this.MinimumWeaponLevelControl.Maximum = new decimal(new int[] {
             90,
@@ -987,11 +987,11 @@
             this.MinimumWeaponLevelControl.Name = "MinimumWeaponLevelControl";
             this.MinimumWeaponLevelControl.Size = new System.Drawing.Size(48, 20);
             this.MinimumWeaponLevelControl.TabIndex = 94;
-            this.MinimumWeaponLevelControl.Value = global::InventoryKamera.Properties.Settings.Default.MinimumWeaponLevel;
+            this.MinimumWeaponLevelControl.Value = global::InventoryKamera.Properties.SettingsService.Instance.Settings.MinimumWeaponLevel;
             // 
             // ArtifactRarityControl
             // 
-            this.ArtifactRarityControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.Settings.Default, "MinimumArtifactRarity", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.ArtifactRarityControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "MinimumArtifactRarity", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.ArtifactRarityControl.Location = new System.Drawing.Point(413, 26);
             this.ArtifactRarityControl.Maximum = new decimal(new int[] {
             5,
@@ -1006,11 +1006,11 @@
             this.ArtifactRarityControl.Name = "ArtifactRarityControl";
             this.ArtifactRarityControl.Size = new System.Drawing.Size(48, 20);
             this.ArtifactRarityControl.TabIndex = 90;
-            this.ArtifactRarityControl.Value = global::InventoryKamera.Properties.Settings.Default.MinimumArtifactRarity;
+            this.ArtifactRarityControl.Value = global::InventoryKamera.Properties.SettingsService.Instance.Settings.MinimumArtifactRarity;
             // 
             // WeaponRarityControl
             // 
-            this.WeaponRarityControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.Settings.Default, "MinimumWeaponRarity", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.WeaponRarityControl.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "MinimumWeaponRarity", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.WeaponRarityControl.Location = new System.Drawing.Point(224, 27);
             this.WeaponRarityControl.Maximum = new decimal(new int[] {
             5,
@@ -1025,14 +1025,14 @@
             this.WeaponRarityControl.Name = "WeaponRarityControl";
             this.WeaponRarityControl.Size = new System.Drawing.Size(48, 20);
             this.WeaponRarityControl.TabIndex = 88;
-            this.WeaponRarityControl.Value = global::InventoryKamera.Properties.Settings.Default.MinimumWeaponRarity;
+            this.WeaponRarityControl.Value = global::InventoryKamera.Properties.SettingsService.Instance.Settings.MinimumWeaponRarity;
             // 
             // Materials_CheckBox
             // 
             this.Materials_CheckBox.AutoSize = true;
-            this.Materials_CheckBox.Checked = global::InventoryKamera.Properties.Settings.Default.ScanMaterials;
+            this.Materials_CheckBox.Checked = global::InventoryKamera.Properties.SettingsService.Instance.Settings.ScanMaterials;
             this.Materials_CheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.Materials_CheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.Settings.Default, "ScanMaterials", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.Materials_CheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "ScanMaterials", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.Materials_CheckBox.Location = new System.Drawing.Point(11, 148);
             this.Materials_CheckBox.Name = "Materials_CheckBox";
             this.Materials_CheckBox.Size = new System.Drawing.Size(68, 17);
@@ -1043,9 +1043,9 @@
             // CharDevItems_CheckBox
             // 
             this.CharDevItems_CheckBox.AutoSize = true;
-            this.CharDevItems_CheckBox.Checked = global::InventoryKamera.Properties.Settings.Default.ScanCharDevItems;
+            this.CharDevItems_CheckBox.Checked = global::InventoryKamera.Properties.SettingsService.Instance.Settings.ScanCharDevItems;
             this.CharDevItems_CheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.CharDevItems_CheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.Settings.Default, "ScanCharDevItems", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.CharDevItems_CheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "ScanCharDevItems", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.CharDevItems_CheckBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.CharDevItems_CheckBox.Location = new System.Drawing.Point(11, 131);
             this.CharDevItems_CheckBox.Margin = new System.Windows.Forms.Padding(2);
@@ -1058,9 +1058,9 @@
             // Characters_CheckBox
             // 
             this.Characters_CheckBox.AutoSize = true;
-            this.Characters_CheckBox.Checked = global::InventoryKamera.Properties.Settings.Default.ScanCharacters;
+            this.Characters_CheckBox.Checked = global::InventoryKamera.Properties.SettingsService.Instance.Settings.ScanCharacters;
             this.Characters_CheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.Characters_CheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.Settings.Default, "ScanCharacters", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.Characters_CheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "ScanCharacters", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.Characters_CheckBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Characters_CheckBox.Location = new System.Drawing.Point(11, 115);
             this.Characters_CheckBox.Margin = new System.Windows.Forms.Padding(2);
@@ -1073,9 +1073,9 @@
             // Artifacts_Checkbox
             // 
             this.Artifacts_Checkbox.AutoSize = true;
-            this.Artifacts_Checkbox.Checked = global::InventoryKamera.Properties.Settings.Default.ScanArtifacts;
+            this.Artifacts_Checkbox.Checked = global::InventoryKamera.Properties.SettingsService.Instance.Settings.ScanArtifacts;
             this.Artifacts_Checkbox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.Artifacts_Checkbox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.Settings.Default, "ScanArtifacts", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.Artifacts_Checkbox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "ScanArtifacts", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.Artifacts_Checkbox.Font = new System.Drawing.Font("Microsoft Sans Serif", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Artifacts_Checkbox.Location = new System.Drawing.Point(11, 99);
             this.Artifacts_Checkbox.Margin = new System.Windows.Forms.Padding(2);
@@ -1088,9 +1088,9 @@
             // Weapons_CheckBox
             // 
             this.Weapons_CheckBox.AutoSize = true;
-            this.Weapons_CheckBox.Checked = global::InventoryKamera.Properties.Settings.Default.ScanWeapons;
+            this.Weapons_CheckBox.Checked = global::InventoryKamera.Properties.SettingsService.Instance.Settings.ScanWeapons;
             this.Weapons_CheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.Weapons_CheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.Settings.Default, "ScanWeapons", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.Weapons_CheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "ScanWeapons", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.Weapons_CheckBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Weapons_CheckBox.Location = new System.Drawing.Point(11, 82);
             this.Weapons_CheckBox.Margin = new System.Windows.Forms.Padding(2);
@@ -1102,14 +1102,14 @@
             // 
             // ScannerDelay_TrackBar
             // 
-            this.ScannerDelay_TrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.Settings.Default, "ScannerDelay", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged, null, "N0"));
+            this.ScannerDelay_TrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "ScannerDelay", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged, null, "N0"));
             this.ScannerDelay_TrackBar.Location = new System.Drawing.Point(10, 274);
             this.ScannerDelay_TrackBar.Margin = new System.Windows.Forms.Padding(2);
             this.ScannerDelay_TrackBar.Maximum = 2;
             this.ScannerDelay_TrackBar.Name = "ScannerDelay_TrackBar";
             this.ScannerDelay_TrackBar.Size = new System.Drawing.Size(129, 45);
             this.ScannerDelay_TrackBar.TabIndex = 68;
-            this.ScannerDelay_TrackBar.Value = global::InventoryKamera.Properties.Settings.Default.ScannerDelay;
+            this.ScannerDelay_TrackBar.Value = global::InventoryKamera.Properties.SettingsService.Instance.Settings.ScannerDelay;
             this.ScannerDelay_TrackBar.ValueChanged += new System.EventHandler(this.ScannerDelay_TrackBar_ValueChanged);
             // 
             // label6
@@ -1132,7 +1132,7 @@
             // 
             // textBox1
             // 
-            this.textBox1.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.Settings.Default, "Manequin1Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.textBox1.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "Manequin1Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBox1.Location = new System.Drawing.Point(416, 155);
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(169, 20);
@@ -1142,7 +1142,7 @@
             // 
             // textBox2
             // 
-            this.textBox2.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.Settings.Default, "Manequin2Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.textBox2.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::InventoryKamera.Properties.SettingsService.Instance.Settings, "Manequin2Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBox2.Location = new System.Drawing.Point(416, 181);
             this.textBox2.Name = "textBox2";
             this.textBox2.Size = new System.Drawing.Size(169, 20);
