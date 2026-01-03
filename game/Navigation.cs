@@ -14,7 +14,6 @@ namespace InventoryKamera
 {
     public static class Navigation
 	{
-		private static NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
 		private static AppSettings Settings => SettingsService.Instance.Settings;
 
 		internal static InputSimulator sim = new InputSimulator();
@@ -39,9 +38,14 @@ namespace InventoryKamera
 		public static void Initialize()
 		{
 			var executables = Settings.Executables;
+            if (executables == null || executables.Count == 0)
+            {
+                throw new InvalidOperationException("No game executables configured.");
+            }
+
 			foreach (var processName in executables)
 			{
-				Logger.Debug("Checking for {0}.exe", processName);
+				Debug.WriteLine("Checking for {0}.exe", processName);
 				if (InitializeProcess(processName, out IntPtr handle))
 				{
 					// Get area and position
@@ -54,21 +58,21 @@ namespace InventoryKamera
 					}
 					catch (DivideByZeroException)
 					{
-						throw new NotImplementedException("Genshin window could not be focused. Please make sure the game is visible.");
+						throw new InvalidOperationException("Genshin window could not be focused. Please make sure the game is visible.");
 					}
 					catch (Exception)
 					{
 						throw;
 					}
 
-					Logger.Debug("Found {0}.exe", processName);
-					Logger.Debug("Window location ({0}x{1}): x={2}, y={3}", WindowSize.Width, WindowSize.Height, WindowPosition.Left, WindowPosition.Top);
+					Debug.WriteLine("Found {0}.exe", processName);
+					Debug.WriteLine("Window location ({0}x{1}): x={2}, y={3}", WindowSize.Width, WindowSize.Height, WindowPosition.Left, WindowPosition.Top);
 					return;
 				}
-				Logger.Debug("Could not find {0}.exe", processName);
+				Debug.WriteLine("Could not find {0}.exe", processName);
 			}
 
-			throw new NullReferenceException("Cannot find Genshin Impact process");
+			throw new InvalidOperationException("Cannot find Genshin Impact process. Is the game running?");
 		}
 
 		public static void Reset()

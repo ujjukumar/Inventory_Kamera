@@ -2,18 +2,20 @@
 using InventoryKamera.Properties;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace InventoryKamera
 {
-    internal class CharacterScraper
+    public class CharacterScraper
 	{
-		private static NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
+		private readonly ILogger<CharacterScraper> _logger;
 		private AppSettings Settings => SettingsService.Instance.Settings;
 
 		protected int NumOfCharToScan;
 
-        public CharacterScraper()
+        public CharacterScraper(ILogger<CharacterScraper> logger)
 		{
+			_logger = logger;
 			NumOfCharToScan = Settings.NumOfCharToScan;
 		}
 
@@ -31,15 +33,12 @@ namespace InventoryKamera
 				var character = ScanCharacter(first);
 				
 				// Skip mannequins/test characters
-				if (character.NameGOOD != null && (
-					character.NameGOOD.Equals("manequin", StringComparison.OrdinalIgnoreCase) || 
-					character.NameGOOD.Contains("Manequin")))
-				{
-					Logger.Info("Skipping mannequin/test character: {0}", character.NameGOOD);
-					Navigation.SelectNextCharacter();
-					UserInterface.ResetCharacterDisplay();
-					continue;
-				}
+					if (character.NameGOOD.Contains("Manequin"))
+					{
+						_logger.LogInformation("Skipping mannequin/test character: {Name}", character.NameGOOD);
+						Navigation.SelectNextCharacter();
+						continue;
+					}
 				
 				if (Characters.Count > 0 && character.NameGOOD == Characters.ElementAt(0).NameGOOD) break;
 				
@@ -47,18 +46,15 @@ namespace InventoryKamera
 				{
 					if (!scanned.Contains(character.NameGOOD))
 					{
-						Characters.Add(character);
-						UserInterface.IncrementCharacterCount();
-						counter++;
-						Logger.Info("Scanned {0} successfully", character.NameGOOD);
-						if (Characters.Count == 1) first = character.NameGOOD;
-						scanned.Add(character.NameGOOD);
-					}
-					else
-					{
-						Logger.Info("Prevented {0} duplicate scan", character.NameGOOD);
-					}
-				}
+						                    scanned.Add(character.NameGOOD);
+						                    UserInterface.IncrementCharacterCount();
+						                    _logger.LogInformation("Scanned {Name} successfully", character.NameGOOD);
+						                }
+						                				{
+						                					if (character.IsValid())
+						                					{						_logger.LogInformation("Prevented {Name} duplicate scan", character.NameGOOD);
+						                					}
+						                				}				}
 				else
 				{
 					string error = "";
@@ -67,7 +63,7 @@ namespace InventoryKamera
 					if (!character.HasValidElement()) error += "Invalid element\n";
 					if (!character.HasValidConstellation()) error += "Invalid constellation\n";
 					if (!character.HasValidTalents()) error += "Invalid talents\n";
-					Logger.Error("Failed to scan character\n" + error + character);
+					_logger.LogError("Failed to scan character\n{Error}{Character}", error, character);
 				}
 
 				Navigation.SelectNextCharacter();
@@ -81,20 +77,20 @@ namespace InventoryKamera
 			{
 				if (Characters[i].NameGOOD.ToLower() == "tartaglia" && Characters[i].Ascension >= 4)
 				{
-					Logger.Info("Ascension 4+ Tartaglia found at position {0}.", i);
+					_logger.LogInformation("Ascension 4+ Tartaglia found at position {Position}.", i);
 					if (i < 4)
 					{
 						for (int j = 0; j < 4; j++)
 						{
 							Characters[j].Talents["auto"] -= 1;
-							Logger.Info("Applied Tartaglia auto attack fix to {0} at position {1}.", Characters[j].NameGOOD, j);
+							_logger.LogInformation("Applied Tartaglia auto attack fix to {Name} at position {Position}.", Characters[j].NameGOOD, j);
 						}
 						break;
 					}
 					else
 					{
 						Characters[i].Talents["auto"] -= 1;
-						Logger.Info("Applied Tartaglia auto attack fix to self only.");
+						_logger.LogInformation("Applied Tartaglia auto attack fix to self only.");
 						break;
 					}
 				}
@@ -102,7 +98,7 @@ namespace InventoryKamera
             }
 		}
 
-		private static Character ScanCharacter(string firstCharacter)
+		private Character ScanCharacter(string firstCharacter)
 		{
 			var character = new Character();
 			Navigation.SelectCharacterAttributes();
@@ -122,8 +118,7 @@ namespace InventoryKamera
 				name.Equals("Columbina", StringComparison.OrdinalIgnoreCase)))
 			{
 				character.NameGOOD = "manequin";
-				Logger.Debug("Detected mannequin/test character: {0}", name);
-				return character;
+									_logger.LogDebug("Detected mannequin/test character: {Name}", name);				return character;
 			}
 
 			if (string.IsNullOrWhiteSpace(name))
@@ -151,8 +146,8 @@ namespace InventoryKamera
 				character.Level = level;
 				character.Ascended = ascended;
 
-				Logger.Info("{0} Level: {1}", character.NameGOOD, character.Level);
-				Logger.Info("{0} Ascended: {1}", character.NameGOOD, character.Ascended);
+				_logger.LogInformation("{Name} Level: {Level}", character.NameGOOD, character.Level);
+				_logger.LogInformation("{Name} Ascended: {Ascended}", character.NameGOOD, character.Ascended);
 
 				// Scan Experience
 				//experience = ScanExperience();
@@ -161,13 +156,13 @@ namespace InventoryKamera
 				// Scan Constellation
 				Navigation.SelectCharacterConstellation();
 				character.Constellation = ScanConstellations(character);
-				Logger.Info("{0} Constellation: {1}", character.NameGOOD, character.Constellation);
+				_logger.LogInformation("{Name} Constellation: {Constellation}", character.NameGOOD, character.Constellation);
 				Navigation.SystemWait(Navigation.Speed.Normal);
 
 				// Scan Talents
 				Navigation.SelectCharacterTalents();
 				character.Talents = ScanTalents(character);
-				Logger.Info("{0} Talents: {1}", character.NameGOOD, "{" + string.Join(", ", character.Talents.Select(kv => kv.Key + "=" + kv.Value).ToArray()) + "}");
+				_logger.LogInformation("{Name} Talents: {Talents}", character.NameGOOD, "{" + string.Join(", ", character.Talents.Select(kv => kv.Key + "=" + kv.Value).ToArray()) + "}");
 				Navigation.SystemWait(Navigation.Speed.Normal);
 
 				// Scale down talents due to constellations
@@ -185,13 +180,13 @@ namespace InventoryKamera
 						// Scale down talents
 						if (character.Constellation >= 3)
 						{
-							Logger.Info("{0} constellation 3+, adjusting scanned {1} level", character.NameGOOD, talentLeveledAtConst3);
+							_logger.LogInformation("{Name} constellation 3+, adjusting scanned {Talent} level", character.NameGOOD, talentLeveledAtConst3);
 							character.Talents[talentLeveledAtConst3] -= 3;
 						}
 
 						if (character.Constellation >= 5)
 						{
-                            Logger.Info("{0} constellation 5+, adjusting scanned {1} level", character.NameGOOD, talentLeveledAtConst5);
+                            _logger.LogInformation("{Name} constellation 5+, adjusting scanned {Talent} level", character.NameGOOD, talentLeveledAtConst5);
                             character.Talents[talentLeveledAtConst5] -= 3;
 						}
 					}
@@ -202,7 +197,6 @@ namespace InventoryKamera
 
 				return character;
 			}
-			Logger.Info("Repeat character {0} detected. Finishing character scan...", name);
 			return character;
 		}
 
@@ -249,7 +243,7 @@ namespace InventoryKamera
 			return text;
 		}
 
-		private static void ScanNameAndElement(ref string name, ref string element)
+		private void ScanNameAndElement(ref string name, ref string element)
 		{
 			int attempts = 0;
 			int maxAttempts = 75;
@@ -296,13 +290,13 @@ namespace InventoryKamera
 
 					if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(element))
 					{
-						Logger.Debug("Scanned character name as {0} with element {1}", name, element);
+						_logger.LogDebug("Scanned character name as {Name} with element {Element}", name, element);
                         UserInterface.SetCharacter_NameAndElement(bm, name, element);
 						return;
 					}
 					else
                     {
-                        Logger.Debug("Could not parse character name/element (Attempt {0}/{1}). Retrying...", attempts+1, maxAttempts);
+                        _logger.LogDebug("Could not parse character name/element (Attempt {Attempt}/{Max}). Retrying...", attempts+1, maxAttempts);
                         bm.Save($"./logging/characters/{bm.GetHashCode()}.png");
                     }
 				}
@@ -313,7 +307,7 @@ namespace InventoryKamera
 			element = null;
 		}
 
-		private static int ScanLevel(ref bool ascended)
+		private int ScanLevel(ref bool ascended)
 		{
             int attempt = 0;
 
@@ -336,15 +330,13 @@ namespace InventoryKamera
 
 				bm = GenshinProcesor.ResizeImage(bm, bm.Width * 2, bm.Height * 2);
 				Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-				GenshinProcesor.SetInvert(ref n);
-				GenshinProcesor.SetContrast(30.0, ref bm);
+			GenshinProcesor.SetInvert(ref n);
+			string text = GenshinProcesor.AnalyzeText(n).Trim();
+			_logger.LogDebug("Scanned character level as {Text}", text);
+			text = Regex.Replace(text, @"(?![\d/]).", string.Empty);
+			_logger.LogDebug("Filtered scanned text to {Text}", text);
 
-				string text = GenshinProcesor.AnalyzeText(n).Trim();
-				Logger.Debug("Scanned character level as {0}", text);
-
-				text = Regex.Replace(text, @"(?![0-9/]).", string.Empty);
-				Logger.Debug("Filtered scanned text to {0}", text);
-				if (text.Contains("/"))
+			if (text.Contains("/"))
 				{
 					var values = text.Split('/');
                     if (int.TryParse(values[0], out int level) && int.TryParse(values[1], out int maxLevel))
@@ -354,12 +346,13 @@ namespace InventoryKamera
                         UserInterface.SetCharacter_Level(bm, level, maxLevel);
                         n.Dispose();
                         bm.Dispose();
-                        Logger.Debug("Parsed character level as {0}", level);
+                        _logger.LogDebug("Parsed character level as {Level}", level);
                         return level;
                     }
 				}
-				Logger.Debug("Failed to parse character level and ascension from {0} (text), retrying", text);
-
+				            n.Dispose();
+				            bm.Dispose();
+				            _logger.LogDebug("Failed to parse character level and ascension from {Text} (text), retrying", text);
 				attempt++;
 
                 n.Dispose();
@@ -370,7 +363,7 @@ namespace InventoryKamera
 			return -1;
 		}
 
-		private static int ScanExperience()
+		private int ScanExperience()
 		{
 			int experience = 0;
 
@@ -406,7 +399,7 @@ namespace InventoryKamera
 			return experience;
 		}
 
-		private static int ScanConstellations(Character character)
+		private int ScanConstellations(Character character)
 		{
 			double yReference = 720.0;
 			int constellation;
@@ -464,7 +457,7 @@ namespace InventoryKamera
 			return constellation;
 		}
 
-		private static Dictionary<string, int> ScanTalents(Character character)
+		private Dictionary<string, int> ScanTalents(Character character)
 		{
 			var talents = new Dictionary<string, int>
 			{

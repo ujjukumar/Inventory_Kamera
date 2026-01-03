@@ -1,14 +1,13 @@
 ﻿using InventoryKamera.Helpers;
 using System.Text.RegularExpressions;
 using static InventoryKamera.Artifact;
+using Microsoft.Extensions.Logging;
 
 namespace InventoryKamera
 {
-    internal class ArtifactScraper : InventoryScraper
+    public class ArtifactScraper : InventoryScraper
     {
-        private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
-
-        public ArtifactScraper()
+        public ArtifactScraper(ILogger<ArtifactScraper> logger) : base(logger)
         {
             inventoryPage = InventoryPage.Artifacts;
             SortByLevel = Settings.MinimumArtifactLevel > 0;
@@ -35,7 +34,7 @@ namespace InventoryKamera
 
             StopScanning = false;
 
-            Logger.Info("Found {0} for artifact count.", artifactCount);
+            _logger.LogInformation("Found {Count} for artifact count.", artifactCount);
 
 
 
@@ -85,8 +84,8 @@ namespace InventoryKamera
             // Go through artifact list
             while (cardsQueued < artifactCount)
             {
-                Logger.Debug("Scanning artifact page {0}", page);
-                Logger.Debug("Located {0} possible item locations on page.", rectangles.Count);
+                _logger.LogDebug("Scanning artifact page {Page}", page);
+                _logger.LogDebug("Located {Count} possible item locations on page.", rectangles.Count);
 
                 int cardsRemaining = artifactCount - cardsQueued;
                 // Go through each "page" of items and queue. In the event that not a full page of
@@ -103,13 +102,13 @@ namespace InventoryKamera
                     cardsQueued++;
                     if (cardsQueued >= artifactCount || StopScanning)
                     {
-                        if (StopScanning) Logger.Info("Stopping artifact scan based on filtering");
-                        else Logger.Info("Stopping artifact scan based on scans queued ({0} of {1})", cardsQueued, artifactCount);
+                        if (StopScanning) _logger.LogInformation("Stopping artifact scan based on filtering");
+                        else _logger.LogInformation("Stopping artifact scan based on scans queued ({Queued} of {Total})", cardsQueued, artifactCount);
                         return;
                     }
                 }
 
-                Logger.Debug("Finished queuing page of artifacts. Scrolling...");
+                _logger.LogDebug("Finished queuing page of artifacts. Scrolling...");
 
                 rowsQueued += rows;
 
@@ -137,7 +136,7 @@ namespace InventoryKamera
                     var rollbackPeriod = Navigation.IsNormal ? 9 : 3;
                     if (page % rollbackPeriod == 0)
                     {
-                        Logger.Debug("Scrolled back one");
+                        _logger.LogDebug("Scrolled back one");
                         Navigation.sim.Mouse.VerticalScroll(1);
                         Navigation.Wait(1);
                     }
@@ -297,7 +296,7 @@ namespace InventoryKamera
                 height: (int)(card.Height * (Navigation.IsNormal ? 0.0475 : 0.0809))));
         }
 
-        public static async Task<Artifact> CatalogueFromBitmapsAsync(List<Bitmap> bm, int id)
+        public async Task<Artifact> CatalogueFromBitmapsAsync(List<Bitmap> bm, int id)
         {
             // Init Variables
             string gearSlot = null;
@@ -368,7 +367,7 @@ namespace InventoryKamera
             return colors.IndexOf(c);
         }
 
-        public static bool IsEnhancementMaterial(Bitmap card)
+        public bool IsEnhancementMaterial(Bitmap card)
         {
             RECT reference = Navigation.GetAspectRatio() == new Size(16, 9) ?
                 new RECT(new Rectangle(862, 80, 327, 560)) : (RECT)new Rectangle(862, 80, 328, 640);
@@ -468,7 +467,7 @@ namespace InventoryKamera
             return int.TryParse(text, out int level) ? level : -1;
         }
 
-        private static (List<SubStat> active, List<SubStat> unactivated) ScanArtifactSubStats(Bitmap artifactImage)
+        private (List<SubStat> active, List<SubStat> unactivated) ScanArtifactSubStats(Bitmap artifactImage)
         {
             Bitmap bm = (Bitmap)artifactImage.Clone();
             List<string> lines = new List<string>();
@@ -507,7 +506,7 @@ namespace InventoryKamera
 
                 if (line.Any(char.IsDigit))
                 {
-                    Logger.Debug("Parsing artifact substat: {0}", line);
+                    _logger.LogDebug("Parsing artifact substat: {Line}", line);
 
                     SubStat substat = new SubStat();
                     Regex re = new Regex(@"^(.*?)(\d+.*)");
@@ -525,7 +524,7 @@ namespace InventoryKamera
                     // Try to parse number
                     if (!decimal.TryParse(value, out substat.value))
                     {
-                        Logger.Debug("Failed to parse stat value from: {0}", line);
+                        _logger.LogDebug("Failed to parse stat value from: {Line}", line);
                         substat.value = -1;
                     }
 
@@ -536,7 +535,7 @@ namespace InventoryKamera
 
                     if (string.IsNullOrWhiteSpace(substat.stat) || substat.value == -1)
                     {
-                        Logger.Debug("Failed to parse stat from: {0}", line);
+                        _logger.LogDebug("Failed to parse stat from: {Line}", line);
                     }
 
                     substats.Insert(i, substat);
@@ -545,7 +544,7 @@ namespace InventoryKamera
 
             if(substats.Count == 0 )
             {
-                Logger.Debug("Failed to obtain substats");
+                _logger.LogDebug("Failed to obtain substats");
             }
 
             //if theres an unactivated substat, moves the last one (should be the only unactivated) to the unactivated list

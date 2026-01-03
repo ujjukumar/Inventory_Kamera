@@ -10,13 +10,14 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace InventoryKamera
 {
     public class InventoryKamera
 	{
 
-		private static NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
+		private readonly ILogger<InventoryKamera> _logger;
 		private AppSettings Settings => SettingsService.Instance.Settings;
 		private CancellationToken _cancellationToken;
 
@@ -44,8 +45,13 @@ namespace InventoryKamera
 			get { return Characters.Count > 0 || Inventory.Size > 0; }
         }
 
-		public InventoryKamera()
+		public InventoryKamera(ILogger<InventoryKamera> logger,
+                               WeaponScraper weaponScraper,
+                               ArtifactScraper artifactScraper,
+                               CharacterScraper characterScraper,
+                               MaterialScraper materialScraper)
 		{
+			_logger = logger;
 			Characters = new List<Character>();
 			Inventory = new Inventory();
 			equippedArtifacts = new List<Artifact>();
@@ -53,10 +59,10 @@ namespace InventoryKamera
 			ImageProcessors = new List<Thread>();
 			workerQueue = new Queue<OCRImageCollection>();
 
-			weaponScraper = new WeaponScraper();
-			artifactScraper = new ArtifactScraper();
-			characterScraper = new CharacterScraper();
-			materialScraper = new MaterialScraper();
+			this.weaponScraper = weaponScraper;
+			this.artifactScraper = artifactScraper;
+			this.characterScraper = characterScraper;
+			this.materialScraper = materialScraper;
 
 			b_threadCancel = false;
 
@@ -69,7 +75,7 @@ namespace InventoryKamera
 					NumWorkers = 2;
 					break;
             }
-			Logger.Info("Kamera initialized");
+			_logger.LogInformation("Kamera initialized");
 		}
 
 		public void ResetLogging()
@@ -87,15 +93,15 @@ namespace InventoryKamera
 			}
 			catch (IOException ex)
 			{
-				Logger.Warn(ex, "Failed to delete existing logging directories");
+				_logger.LogWarning(ex, "Failed to delete existing logging directories");
 			}
 			catch (UnauthorizedAccessException ex)
 			{
-				Logger.Warn(ex, "Access denied when deleting logging directories");
+				_logger.LogWarning(ex, "Access denied when deleting logging directories");
 			}
 			catch (Exception ex)
 			{
-				Logger.Warn(ex, "Unexpected error deleting logging directories");
+				_logger.LogWarning(ex, "Unexpected error deleting logging directories");
 			}
 
 			try
@@ -105,19 +111,19 @@ namespace InventoryKamera
 				Directory.CreateDirectory("./logging/characters");
 				Directory.CreateDirectory("./logging/materials");
 
-				Logger.Info("Logging directory reset");
+				_logger.LogInformation("Logging directory reset");
 			}
 			catch (IOException ex)
 			{
-				Logger.Error(ex, "Failed to create logging directories");
+				_logger.LogError(ex, "Failed to create logging directories");
 			}
 			catch (UnauthorizedAccessException ex)
 			{
-				Logger.Error(ex, "Access denied when creating logging directories");
+				_logger.LogError(ex, "Access denied when creating logging directories");
 			}
 			catch (Exception ex)
 			{
-				Logger.Error(ex, "Unexpected error creating logging directories");
+				_logger.LogError(ex, "Unexpected error creating logging directories");
 			}
 		}
 
@@ -143,7 +149,7 @@ namespace InventoryKamera
 				processor.Start();
 				ImageProcessors.Add(processor);
 			}
-			Logger.Debug("Added {ImageProcessors.Count} workers", ImageProcessors.Count);
+			_logger.LogDebug("Added {Count} workers", ImageProcessors.Count);
 
 			GenshinProcesor.RestartEngines();
 
@@ -267,7 +273,7 @@ namespace InventoryKamera
 
             if (Settings.ScanWeapons)
 			{
-				Logger.Info("Scanning weapons...");
+				_logger.LogInformation("Scanning weapons...");
 				// Get Weapons
 				Navigation.InventoryScreen();
 				Navigation.SelectWeaponInventory();
@@ -283,14 +289,14 @@ namespace InventoryKamera
 					UserInterface.AddError(ex.Message + "\n" + ex.StackTrace);
 				}
 				Navigation.MainMenuScreen();
-				Logger.Info("Done scanning weapons");
+				_logger.LogInformation("Done scanning weapons");
 			}
 
 			_cancellationToken.ThrowIfCancellationRequested();
 
 			if (Settings.ScanArtifacts)
 			{
-				Logger.Info("Scanning artifacts...");
+				_logger.LogInformation("Scanning artifacts...");
 
 				// Get Artifacts
 				Navigation.InventoryScreen();
@@ -307,7 +313,7 @@ namespace InventoryKamera
 					UserInterface.AddError(ex.Message + "\n" + ex.StackTrace);
 				}
 				Navigation.MainMenuScreen();
-				Logger.Info("Done scanning artifacts");
+				_logger.LogInformation("Done scanning artifacts");
 			}
 
 			workerQueue.Enqueue(new OCRImageCollection(null, "END", 0));
@@ -316,7 +322,7 @@ namespace InventoryKamera
 
 			if (Settings.ScanCharacters)
 			{
-				Logger.Info("Scanning characters...");
+				_logger.LogInformation("Scanning characters...");
 				// Get characters
 				Navigation.CharacterScreen();
 				try
@@ -330,7 +336,7 @@ namespace InventoryKamera
 					UserInterface.AddError(ex.Message + "\n" + ex.StackTrace);
 				}
 				Navigation.MainMenuScreen();
-				Logger.Info("Done scanning characters");
+				_logger.LogInformation("Done scanning characters");
 			}
 
 			// Wait for Image Processors to finish
@@ -350,7 +356,7 @@ namespace InventoryKamera
 			// Scan Character Development Items
 			if (Settings.ScanCharDevItems)
 			{
-				Logger.Info("Scanning character development materials...");
+				_logger.LogInformation("Scanning character development materials...");
 				// Get Materials
 				Navigation.InventoryScreen();
 				Navigation.SelectCharacterDevelopmentInventory();
@@ -368,7 +374,7 @@ namespace InventoryKamera
 					UserInterface.AddError(ex.Message + "\n" + ex.StackTrace);
 				}
 				Navigation.MainMenuScreen();
-				Logger.Info("Done scanning character development materials");
+				_logger.LogInformation("Done scanning character development materials");
 			}
 
 			_cancellationToken.ThrowIfCancellationRequested();
@@ -376,7 +382,7 @@ namespace InventoryKamera
 			// Scan Materials
 			if (Settings.ScanMaterials)
 			{
-				Logger.Info("Scanning materials...");
+				_logger.LogInformation("Scanning materials...");
 				// Get Materials
 				Navigation.InventoryScreen();
 				Navigation.SelectMaterialInventory();
@@ -394,7 +400,7 @@ namespace InventoryKamera
 					UserInterface.AddError(ex.Message + "\n" + ex.StackTrace);
 				}
 				Navigation.MainMenuScreen();
-				Logger.Info("Done scanning materials");
+				_logger.LogInformation("Done scanning materials");
 			}
 		}
 
@@ -409,7 +415,7 @@ namespace InventoryKamera
 
 		public void ImageProcessorWorker()
 		{
-			Logger.Debug("Thread #{0} priority: {1}", Thread.CurrentThread.ManagedThreadId, Thread.CurrentThread.Priority);
+			_logger.LogDebug("Thread #{ThreadId} priority: {Priority}", Thread.CurrentThread.ManagedThreadId, Thread.CurrentThread.Priority);
 			while (true)
 			{
 				if (b_threadCancel)
@@ -425,7 +431,7 @@ namespace InventoryKamera
 						case "weapon":
 							if (weaponScraper.IsEnhancementMaterial(imageCollection.Bitmaps.First()))
 							{
-								Logger.Debug("Enhancement Material found for weapon #{weaponID}", imageCollection.Id);
+								_logger.LogDebug("Enhancement Material found for weapon #{weaponID}", imageCollection.Id);
 								weaponScraper.StopScanning = true;
 								break;
 							}
@@ -488,16 +494,16 @@ namespace InventoryKamera
 							break;
 
 						case "artifact":
-							if (ArtifactScraper.IsEnhancementMaterial(imageCollection.Bitmaps.Last()))
+							if (artifactScraper.IsEnhancementMaterial(imageCollection.Bitmaps.Last()))
 							{
-								Logger.Debug("Enhancement Material found for artifact #{artifactID}", imageCollection.Id);
+								_logger.LogDebug("Enhancement Material found for artifact #{artifactID}", imageCollection.Id);
 								artifactScraper.StopScanning = true;
 								break;
 							}
 
 							UserInterface.SetGearPictureBox(imageCollection.Bitmaps.Last());
 							// Scan as artifact
-							Artifact artifact = ArtifactScraper.CatalogueFromBitmapsAsync(imageCollection.Bitmaps, imageCollection.Id).Result;
+							Artifact artifact = artifactScraper.CatalogueFromBitmapsAsync(imageCollection.Bitmaps, imageCollection.Id).Result;
 							UserInterface.SetGear(imageCollection.Bitmaps.Last(), artifact);
 
 							string artifactPath = $"./logging/artifacts/artifact{artifact.Id}/";
@@ -576,7 +582,7 @@ namespace InventoryKamera
 					Thread.Sleep(250);
 				}
 			}
-			Logger.Debug("Thread {threadId} exit", Thread.CurrentThread.ManagedThreadId);
+			_logger.LogDebug("Thread {threadId} exit", Thread.CurrentThread.ManagedThreadId);
 		}
 
         private static void LogObject(object obj, string path)
@@ -600,7 +606,7 @@ namespace InventoryKamera
 					if (artifact.EquippedCharacter == character.NameGOOD)
 					{
 						character.AssignArtifact(artifact); // Do we even need to do this?
-						Logger.Debug("Assigned {fearSlot} to {character}", artifact.GearSlot, character.NameGOOD);
+						_logger.LogDebug("Assigned {fearSlot} to {character}", artifact.GearSlot, character.NameGOOD);
 						break;
 					}
 				}
@@ -616,14 +622,14 @@ namespace InventoryKamera
 					if (weapon.EquippedCharacter == character.NameGOOD)
 					{
 						character.AssignWeapon(weapon);
-						Logger.Debug("Assigned {weapon} to {character}", weapon.Name, character.NameGOOD);
+						_logger.LogDebug("Assigned {weapon} to {character}", weapon.Name, character.NameGOOD);
 						break;
 					}
 				}
 				if (character.Weapon is null)
 				{
 					Inventory.Add(new Weapon(character.WeaponType, character.NameGOOD));
-					Logger.Info("Default weapon assigned to {character}", character.NameGOOD);
+					_logger.LogInformation("Default weapon assigned to {character}", character.NameGOOD);
 				}
 			}
 		}

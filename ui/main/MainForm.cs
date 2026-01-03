@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using WindowsInput.Native;
 using InventoryKamera.Properties;
 using Application = System.Windows.Forms.Application;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace InventoryKamera
 {
@@ -17,7 +18,7 @@ namespace InventoryKamera
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
         private static Thread scannerThread;
-        private static InventoryKamera data = new InventoryKamera();
+        private static InventoryKamera data;
         private static DatabaseManager databaseManager = new DatabaseManager();
 
         private CancellationTokenSource _cancellationTokenSource;
@@ -275,7 +276,7 @@ namespace InventoryKamera
 
                         if (Navigation.GetSize() != Navigation.CaptureWindow().Size) throw new FormatException("Window size and screenshot size mismatch. Please make sure the game is not in a fullscreen mode.");
 
-                        data = new InventoryKamera();
+                        data = Program.ServiceProvider.GetRequiredService<InventoryKamera>();
 
                         Logger.Info("Resolution: {0}x{1}", Navigation.GetSize().Width, Navigation.GetSize().Height);
 

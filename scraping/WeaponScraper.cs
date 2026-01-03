@@ -1,13 +1,11 @@
-﻿using NLog;
+﻿using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
 namespace InventoryKamera
 {
-    internal class WeaponScraper : InventoryScraper
+    public class WeaponScraper : InventoryScraper
     {
-		private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-
-		public WeaponScraper()
+		public WeaponScraper(ILogger<WeaponScraper> logger) : base(logger)
         {
             inventoryPage = InventoryPage.Weapons;
             SortByLevel = Settings.MinimumWeaponLevel > 1;
@@ -31,15 +29,15 @@ namespace InventoryKamera
 
             StopScanning = false;
 
-            Logger.Info("Found {0} for weapon count.", weaponCount);
+            _logger.LogInformation("Found {WeaponCount} for weapon count.", weaponCount);
 
             SelectSortingMethod();
 
             // Go through weapon list
             while (cardsQueued < weaponCount)
             {
-                Logger.Debug("Scanning weapon page {0}", page);
-                Logger.Debug("Located {0} possible item locations on page.", rectangles.Count);
+                _logger.LogDebug("Scanning weapon page {Page}", page);
+                _logger.LogDebug("Located {Count} possible item locations on page.", rectangles.Count);
 
                 int cardsRemaining = weaponCount - cardsQueued;
                 // Go through each "page" of items and queue. In the event that not a full page of
@@ -56,12 +54,12 @@ namespace InventoryKamera
                     cardsQueued++;
                     if (cardsQueued >= weaponCount || this.StopScanning)
                     {
-                        if (StopScanning) Logger.Info("Stopping weapon scan based on filtering");
-                        else Logger.Info("Stopping weapon scan based on scans queued ({0} of {1})", cardsQueued, weaponCount);
+                        if (StopScanning) _logger.LogInformation("Stopping weapon scan based on filtering");
+                        else _logger.LogInformation("Stopping weapon scan based on scans queued ({Queued} of {Total})", cardsQueued, weaponCount);
                         return;
                     }
                 }
-                Logger.Debug("Finished queuing page of weapons. Scrolling...");
+                _logger.LogDebug("Finished queuing page of weapons. Scrolling...");
 
                 rowsQueued += rows;
 
@@ -131,27 +129,27 @@ namespace InventoryKamera
             {
                 if (SortByLevel)
                 {
-                    Logger.Debug("Sorting by level to optimize scan time.");
+                    _logger.LogDebug("Sorting by level to optimize scan time.");
                     // Check if sorted by level
                     if (CurrentSortingMethod() != "level")
                     {
-                        Logger.Debug("Not already sorting by level...");
+                        _logger.LogDebug("Not already sorting by level...");
                         // If not, sort by level
                         SelectLevelSorting();
                     }
-                    Logger.Debug("Inventory is sorted by level.");
+                    _logger.LogDebug("Inventory is sorted by level.");
                 }
                 else
                 {
-                    Logger.Debug("Sorting by quality to optimize scan time.");
+                    _logger.LogDebug("Sorting by quality to optimize scan time.");
                     // Check if sorted by quality
                     if (CurrentSortingMethod() != "quality")
                     {
-                        Logger.Debug("Not already sorting by quality...");
+                        _logger.LogDebug("Not already sorting by quality...");
                         // If not, sort by quality
                         SelectQualitySorting();
                     }
-                    Logger.Debug("Inventory is sorted by quality");
+                    _logger.LogDebug("Inventory is sorted by quality");
                 }
             }
         }

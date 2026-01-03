@@ -2,6 +2,8 @@
 using System.Text.RegularExpressions;
 using static InventoryKamera.Helpers.BitmapHelper;
 
+using Microsoft.Extensions.Logging;
+
 namespace InventoryKamera
 {
     [Serializable]
@@ -18,6 +20,12 @@ namespace InventoryKamera
 
 		public void GetObjectData(SerializationInfo info, StreamingContext context) => info.AddValue(name, count);
 
+		public Material(SerializationInfo info, StreamingContext context)
+		{
+			name = info.GetString("name");
+			count = info.GetInt32("count");
+		}
+
 		public override int GetHashCode()
 		{
 			return name.GetHashCode();
@@ -29,17 +37,14 @@ namespace InventoryKamera
 		}
 	}
 
-	internal class MaterialScraper : InventoryScraper
+	public class MaterialScraper : InventoryScraper
 	{
-		private static NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
-
-
-		public MaterialScraper()
+		public MaterialScraper(ILogger<MaterialScraper> logger) : base(logger)
 		{
 			inventoryPage = InventoryPage.CharacterDevelopmentItems;
 		}
 
-		public MaterialScraper(InventoryPage section) : base()
+		public MaterialScraper(InventoryPage section, ILogger<MaterialScraper> logger) : base(logger)
 		{
 			inventoryPage = section;
 		}
@@ -76,8 +81,8 @@ namespace InventoryKamera
 				// need to be scrolled but it's fine.
 				var r = rectangles.Take(rectangles.Count() - cols).ToList();
 
-				Logger.Debug("Scanning material page {0}", page);
-				Logger.Debug("Located {0} possible item locations on page.", rectangles.Count);
+				_logger.LogDebug("Scanning material page {Page}", page);
+				_logger.LogDebug("Located {Count} possible item locations on page.", rectangles.Count);
 
 				foreach (var rectangle in r)
 				{
@@ -92,7 +97,7 @@ namespace InventoryKamera
 					// Check if new material has been found
 					if (inventory.Materials.Contains(material))
 					{
-						Logger.Debug("Repeat material found. Scrolling until end");
+						_logger.LogDebug("Repeat material found. Scrolling until end");
 						goto LastPage;
 					}
 					else
@@ -125,8 +130,7 @@ namespace InventoryKamera
 				Navigation.Click();
 				Navigation.Wait(150);
 
-				Logger.Debug("Finished page of materials. Scrolling...");
-
+				                _logger.LogDebug("Finished page of materials. Scrolling...");
 				// Scroll to next page
 				for (int i = 0; i < rows - 1; i++)
 				{
@@ -208,8 +212,7 @@ namespace InventoryKamera
 				}
 				else
 				{
-					Logger.Debug("Last material scanned, {0}.", inventory.Materials.Last().name);
-					nameplate.Dispose();
+					            _logger.LogDebug("Last material scanned, {Name}.", inventory.Materials.Last().name);					nameplate.Dispose();
 					break;
 				}
 				Navigation.Wait(150);
@@ -250,17 +253,17 @@ namespace InventoryKamera
 			}
 		}
 
-		public static string ParseMoraFromScreenshot(Bitmap screenshot)
+		public string ParseMoraFromScreenshot(Bitmap screenshot)
 		{
 			using (var gray = GenshinProcesor.ConvertToGrayscale(screenshot))
 			{
 				var invert = (Bitmap)gray.Clone();
 				GenshinProcesor.SetInvert(ref invert);
 				var input = GenshinProcesor.AnalyzeText(invert).Split(' ').ToList();
-				Logger.Debug("Scanned mora input: {0}", input.ToString());
+				_logger.LogDebug("Scanned mora input: {Input}", input.ToString());
 				input.RemoveAll(e => Regex.IsMatch(e.Trim(), @"[^0-9]") || string.IsNullOrWhiteSpace(e.Trim()));
 				var mora = input.LastOrDefault();
-				Logger.Debug("Parsed mora input: {0}", mora);
+				_logger.LogDebug("Parsed mora input: {Mora}", mora);
 				return mora;
 			}
 		}
@@ -307,7 +310,7 @@ namespace InventoryKamera
 			return null;
 		}
 
-		public static int ScanMaterialCount(Rectangle rectangle, out Bitmap quantity)
+		public int ScanMaterialCount(Rectangle rectangle, out Bitmap quantity)
 		{
 			Dictionary<int, int> counts = [];
 			var region = new RECT(
@@ -356,7 +359,7 @@ namespace InventoryKamera
 
                         int.TryParse(cleaned, out val);
 
-                        Logger.Debug($"Scanned: {original} -> Regex: {cleaned} -> Parsed: {val}");
+                        _logger.LogDebug("Scanned: {Original} -> Regex: {Cleaned} -> Parsed: {Val}", original, cleaned, val);
 
                         if (counts.TryGetValue(val, out var counter))
                         {

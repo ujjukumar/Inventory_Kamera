@@ -1,5 +1,5 @@
 ﻿using InventoryKamera.Properties;
-using NLog;
+using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
 namespace InventoryKamera
@@ -42,9 +42,9 @@ namespace InventoryKamera
         }
     }
 
-    internal class InventoryScraper
+    public class InventoryScraper
     {
-        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        protected readonly ILogger _logger;
         protected AppSettings Settings => SettingsService.Instance.Settings;
 
         protected InventoryPage inventoryPage;
@@ -59,8 +59,9 @@ namespace InventoryKamera
         private int prevColumn = 0;
         private int prevRow = 0;
 
-        public InventoryScraper() 
+        public InventoryScraper(ILogger logger) 
         {
+            _logger = logger;
             materialPages = new List<InventoryPage>();
 
             materialPages.AddRange(Enum.GetValues(typeof(InventoryPage)).Cast<InventoryPage>());
@@ -175,7 +176,7 @@ namespace InventoryKamera
                 else // Extreme worst case
                 {
                     count = 2000;
-                    Logger.Debug("Defaulted to 2000 for inventory page capacity");
+                    _logger.LogDebug("Defaulted to 2000 for inventory page capacity");
                 }
 
                 return count;
@@ -409,8 +410,8 @@ namespace InventoryKamera
                         itemCount = rows * cols;
                         if (itemCount != itemPerPage && !acceptLess)
                         {
-                            Logger.Warn("Unable to locate full page of weapons with weight {0}", weight);
-                            Logger.Warn("Detected {0} rows and {1} columns of items", rows, cols);
+                            _logger.LogWarning("Unable to locate full page of weapons with weight {weight}", weight);
+                            _logger.LogWarning("Detected {Rows} rows and {Cols} columns of items", rows, cols);
 
                             // Generate rectangles
                             using (Bitmap copy = (Bitmap)screenshot.Clone())
@@ -447,7 +448,7 @@ namespace InventoryKamera
 
                     if (rectangles == null)
                     {
-                        Logger.Warn("Could not find {0} items in inventory. Re-using previous item page.", itemPerPage);
+                        _logger.LogWarning("Could not find {ItemPerPage} items in inventory. Re-using previous item page.", itemPerPage);
 
                         return prevRect == null ?
                             throw new ArgumentNullException("Could not find first page of items!") 
