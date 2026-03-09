@@ -135,7 +135,7 @@ partial class MainForm
         ErrorLog_Label = new Label();
         ErrorReport_Label = new Label();
         IssuesPage_Label = new LinkLabel();
-        ErrorLog_TextBox = new TextBox();
+        ErrorLog_TextBox = new RichTextBox();
 
         folderBrowserDialog1 = new FolderBrowserDialog();
         equipWeaponToolTip = new ToolTip(components);
@@ -1205,12 +1205,12 @@ partial class MainForm
         ErrorLog_Label.AutoSize = true;
         ErrorLog_Label.Cursor = Cursors.Hand;
         ErrorLog_Label.Font = new Font("Segoe UI Semibold", 8.25F, FontStyle.Bold);
-        ErrorLog_Label.ForeColor = Color.FromArgb(231, 76, 60);
+        ErrorLog_Label.ForeColor = Color.FromArgb(189, 195, 199);
         ErrorLog_Label.Location = new Point(4, 224);
         ErrorLog_Label.Name = "ErrorLog_Label";
-        ErrorLog_Label.Size = new Size(152, 13);
+        ErrorLog_Label.Size = new Size(160, 13);
         ErrorLog_Label.TabIndex = 14;
-        ErrorLog_Label.Text = "Error Log  (scroll / click me)";
+        ErrorLog_Label.Text = "Activity Log  (scroll / click me)";
         ErrorLog_Label.Click += ErrorLog_Label_Click;
         //
         // ErrorReport_Label
@@ -1237,16 +1237,15 @@ partial class MainForm
         //
         // ErrorLog_TextBox
         //
-        ErrorLog_TextBox.AcceptsReturn = true;
         ErrorLog_TextBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         ErrorLog_TextBox.BackColor = Color.FromArgb(52, 73, 94);
-        ErrorLog_TextBox.BorderStyle = BorderStyle.FixedSingle;
-        ErrorLog_TextBox.ForeColor = Color.FromArgb(231, 76, 60);
+        ErrorLog_TextBox.BorderStyle = BorderStyle.None;
+        ErrorLog_TextBox.Font = new Font("Cascadia Mono", 8F, FontStyle.Regular, GraphicsUnit.Point);
+        ErrorLog_TextBox.ForeColor = Color.FromArgb(200, 210, 220);
         ErrorLog_TextBox.Location = new Point(4, 242);
-        ErrorLog_TextBox.Multiline = true;
         ErrorLog_TextBox.Name = "ErrorLog_TextBox";
         ErrorLog_TextBox.ReadOnly = true;
-        ErrorLog_TextBox.ScrollBars = ScrollBars.Vertical;
+        ErrorLog_TextBox.ScrollBars = RichTextBoxScrollBars.Vertical;
         ErrorLog_TextBox.Size = new Size(650, 150);
         ErrorLog_TextBox.TabIndex = 17;
         //
@@ -1357,7 +1356,7 @@ partial class MainForm
     private System.Windows.Forms.Label ArtifactsMax_Label;
     private System.Windows.Forms.Label ProgramStatus_Label;
     private System.Windows.Forms.LinkLabel Github_Label;
-    private System.Windows.Forms.TextBox ErrorLog_TextBox;
+    private System.Windows.Forms.RichTextBox ErrorLog_TextBox;
     private System.Windows.Forms.Label ErrorLog_Label;
     private System.Windows.Forms.Label ErrorReport_Label;
     private System.Windows.Forms.LinkLabel IssuesPage_Label;
