@@ -146,6 +146,7 @@
             this.StartScan_Button.Location = new System.Drawing.Point(12, 355);
             this.StartScan_Button.Margin = new System.Windows.Forms.Padding(2);
             this.StartScan_Button.Name = "StartScan_Button";
+            this.StartScan_Button.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.StartScan_Button.Size = new System.Drawing.Size(124, 34);
             this.StartScan_Button.TabIndex = 0;
             this.StartScan_Button.Text = "Scan Genshin";
@@ -182,6 +183,7 @@
             this.ScannerCancelInstructions_Label.Location = new System.Drawing.Point(12, 394);
             this.ScannerCancelInstructions_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.ScannerCancelInstructions_Label.Name = "ScannerCancelInstructions_Label";
+            this.ScannerCancelInstructions_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.ScannerCancelInstructions_Label.Size = new System.Drawing.Size(124, 13);
             this.ScannerCancelInstructions_Label.TabIndex = 11;
             this.ScannerCancelInstructions_Label.Text = "Press \'ENTER\' to cancel";
@@ -306,6 +308,7 @@
             this.WeaponsScanned_Label.Location = new System.Drawing.Point(7, 417);
             this.WeaponsScanned_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.WeaponsScanned_Label.Name = "WeaponsScanned_Label";
+            this.WeaponsScanned_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.WeaponsScanned_Label.Size = new System.Drawing.Size(59, 13);
             this.WeaponsScanned_Label.TabIndex = 41;
             this.WeaponsScanned_Label.Text = "Weapons: ";
@@ -316,6 +319,7 @@
             this.Artifacts_Label.Location = new System.Drawing.Point(7, 430);
             this.Artifacts_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.Artifacts_Label.Name = "Artifacts_Label";
+            this.Artifacts_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.Artifacts_Label.Size = new System.Drawing.Size(51, 13);
             this.Artifacts_Label.TabIndex = 42;
             this.Artifacts_Label.Text = "Artifacts: ";
@@ -326,6 +330,7 @@
             this.Characters_Label.Location = new System.Drawing.Point(7, 444);
             this.Characters_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.Characters_Label.Name = "Characters_Label";
+            this.Characters_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.Characters_Label.Size = new System.Drawing.Size(64, 13);
             this.Characters_Label.TabIndex = 43;
             this.Characters_Label.Text = "Characters: ";
@@ -336,6 +341,7 @@
             this.CharactersScanned_Label.Location = new System.Drawing.Point(80, 444);
             this.CharactersScanned_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.CharactersScanned_Label.Name = "CharactersScanned_Label";
+            this.CharactersScanned_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.CharactersScanned_Label.Size = new System.Drawing.Size(13, 13);
             this.CharactersScanned_Label.TabIndex = 44;
             this.CharactersScanned_Label.Text = "0";
@@ -346,6 +352,7 @@
             this.ArtifactsScanned_Label.Location = new System.Drawing.Point(80, 430);
             this.ArtifactsScanned_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.ArtifactsScanned_Label.Name = "ArtifactsScanned_Label";
+            this.ArtifactsScanned_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.ArtifactsScanned_Label.Size = new System.Drawing.Size(13, 13);
             this.ArtifactsScanned_Label.TabIndex = 45;
             this.ArtifactsScanned_Label.Text = "0";
@@ -356,6 +363,7 @@
             this.WeaponsScannedCount_Label.Location = new System.Drawing.Point(80, 417);
             this.WeaponsScannedCount_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.WeaponsScannedCount_Label.Name = "WeaponsScannedCount_Label";
+            this.WeaponsScannedCount_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.WeaponsScannedCount_Label.Size = new System.Drawing.Size(13, 13);
             this.WeaponsScannedCount_Label.TabIndex = 46;
             this.WeaponsScannedCount_Label.Text = "0";
@@ -366,6 +374,7 @@
             this.WeaponsScannedSlash_Label.Location = new System.Drawing.Point(111, 417);
             this.WeaponsScannedSlash_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.WeaponsScannedSlash_Label.Name = "WeaponsScannedSlash_Label";
+            this.WeaponsScannedSlash_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.WeaponsScannedSlash_Label.Size = new System.Drawing.Size(12, 13);
             this.WeaponsScannedSlash_Label.TabIndex = 47;
             this.WeaponsScannedSlash_Label.Text = "/";
@@ -376,6 +385,7 @@
             this.ArtifactsScannedSlash_Label.Location = new System.Drawing.Point(111, 430);
             this.ArtifactsScannedSlash_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.ArtifactsScannedSlash_Label.Name = "ArtifactsScannedSlash_Label";
+            this.ArtifactsScannedSlash_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.ArtifactsScannedSlash_Label.Size = new System.Drawing.Size(12, 13);
             this.ArtifactsScannedSlash_Label.TabIndex = 48;
             this.ArtifactsScannedSlash_Label.Text = "/";
@@ -386,6 +396,7 @@
             this.WeaponsMax_Labell.Location = new System.Drawing.Point(126, 417);
             this.WeaponsMax_Labell.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.WeaponsMax_Labell.Name = "WeaponsMax_Labell";
+            this.WeaponsMax_Labell.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.WeaponsMax_Labell.Size = new System.Drawing.Size(13, 13);
             this.WeaponsMax_Labell.TabIndex = 49;
             this.WeaponsMax_Labell.Text = "0";
@@ -396,6 +407,7 @@
             this.ArtifactsMax_Label.Location = new System.Drawing.Point(126, 430);
             this.ArtifactsMax_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.ArtifactsMax_Label.Name = "ArtifactsMax_Label";
+            this.ArtifactsMax_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.ArtifactsMax_Label.Size = new System.Drawing.Size(13, 13);
             this.ArtifactsMax_Label.TabIndex = 50;
             this.ArtifactsMax_Label.Text = "0";
@@ -408,6 +420,7 @@
             this.ProgramStatus_Label.Location = new System.Drawing.Point(5, 319);
             this.ProgramStatus_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.ProgramStatus_Label.Name = "ProgramStatus_Label";
+            this.ProgramStatus_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.ProgramStatus_Label.Size = new System.Drawing.Size(156, 25);
             this.ProgramStatus_Label.TabIndex = 51;
             this.ProgramStatus_Label.Text = "Scanning Status";
@@ -419,6 +432,7 @@
             this.Github_Label.Location = new System.Drawing.Point(500, 26);
             this.Github_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.Github_Label.Name = "Github_Label";
+            this.Github_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.Github_Label.Size = new System.Drawing.Size(88, 13);
             this.Github_Label.TabIndex = 52;
             this.Github_Label.TabStop = true;
@@ -437,6 +451,9 @@
             this.ErrorLog_TextBox.ReadOnly = true;
             this.ErrorLog_TextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.ErrorLog_TextBox.Size = new System.Drawing.Size(429, 60);
+            this.ErrorLog_TextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.ErrorLog_TextBox.TabIndex = 53;
             // 
             // ErrorLog_Label
@@ -484,6 +501,7 @@
             this.Releases_Label.Location = new System.Drawing.Point(500, 45);
             this.Releases_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.Releases_Label.Name = "Releases_Label";
+            this.Releases_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.Releases_Label.Size = new System.Drawing.Size(85, 13);
             this.Releases_Label.TabIndex = 62;
             this.Releases_Label.TabStop = true;
@@ -495,6 +513,7 @@
             this.Navigation_Image.Location = new System.Drawing.Point(502, 83);
             this.Navigation_Image.Margin = new System.Windows.Forms.Padding(2);
             this.Navigation_Image.Name = "Navigation_Image";
+            this.Navigation_Image.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.Navigation_Image.Size = new System.Drawing.Size(80, 40);
             this.Navigation_Image.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.Navigation_Image.TabIndex = 64;
@@ -506,6 +525,7 @@
             this.Navigation_Label.Location = new System.Drawing.Point(499, 67);
             this.Navigation_Label.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.Navigation_Label.Name = "Navigation_Label";
+            this.Navigation_Label.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.Navigation_Label.Size = new System.Drawing.Size(61, 13);
             this.Navigation_Label.TabIndex = 65;
             this.Navigation_Label.Text = "Navigation:";
@@ -536,6 +556,9 @@
             this.ScannerOutput_Panel.Margin = new System.Windows.Forms.Padding(0);
             this.ScannerOutput_Panel.Name = "ScannerOutput_Panel";
             this.ScannerOutput_Panel.Size = new System.Drawing.Size(435, 304);
+            this.ScannerOutput_Panel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.ScannerOutput_Panel.TabIndex = 67;
             // 
             // GearPictureBox
@@ -809,6 +832,7 @@
             this.ManualExportButton.Enabled = false;
             this.ManualExportButton.Location = new System.Drawing.Point(6, 460);
             this.ManualExportButton.Name = "ManualExportButton";
+            this.ManualExportButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.ManualExportButton.Size = new System.Drawing.Size(144, 23);
             this.ManualExportButton.TabIndex = 97;
             this.ManualExportButton.Text = "Open Genshin Optimizer";
@@ -819,6 +843,7 @@
             // 
             this.button1.Location = new System.Drawing.Point(7, 484);
             this.button1.Name = "button1";
+            this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.button1.Size = new System.Drawing.Size(143, 23);
             this.button1.TabIndex = 100;
             this.button1.Text = "Open Export Folder";
@@ -1214,7 +1239,8 @@
             this.Controls.Add(this.ScannerCancelInstructions_Label);
             this.Controls.Add(this.StartScan_Button);
             this.Controls.Add(this.menuStrip1);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
+            this.MinimumSize = new System.Drawing.Size(615, 558);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStrip1;
             this.Margin = new System.Windows.Forms.Padding(2);

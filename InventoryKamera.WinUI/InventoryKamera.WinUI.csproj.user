@@ -4,7 +4,7 @@
     <DebuggerFlavor>ProjectDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup>
-    <ActiveDebugProfile>InventoryKamera.WinUI (Unpackaged)</ActiveDebugProfile>
+    <ActiveDebugProfile>InventoryKamera.WinUI (Package)</ActiveDebugProfile>
   </PropertyGroup>
   <ItemGroup>
     <None Update="App.xaml">
