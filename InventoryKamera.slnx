@@ -10,11 +10,14 @@
     <File Path="README.md" />
   </Folder>
   <Project Path="InventoryKamera.WinForms/InventoryKamera.WinForms.csproj">
-    <Platform Solution="*|x64" Project="x64" />
+    <Platform Project="x64" />
   </Project>
-  <Project Path="InventoryKamera.Services/InventoryKamera.Services.csproj" />
+  <Project Path="InventoryKamera.Services/InventoryKamera.Services.csproj">
+    <Platform Project="x64" />
+    <Build Solution="Release|*" Project="false" />
+  </Project>
   <Project Path="InventoryKamera.WinUI/InventoryKamera.WinUI.csproj">
-    <Platform Solution="*|x64" Project="x64" />
+    <Platform Project="x64" />
     <Deploy />
   </Project>
 </Solution>

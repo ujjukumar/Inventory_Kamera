@@ -1,4 +1,8 @@
-﻿using Microsoft.UI.Xaml;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.UI.Xaml;
+using System;
+using InventoryKamera.WinUI.ViewModels;
 
 namespace InventoryKamera.WinUI
 {
@@ -8,6 +12,7 @@ namespace InventoryKamera.WinUI
     public partial class App : Application
     {
         private Window? _window;
+        public IHost Host { get; }
 
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -16,6 +21,24 @@ namespace InventoryKamera.WinUI
         public App()
         {
             InitializeComponent();
+
+            Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+                .ConfigureServices((context, services) =>
+                {
+                    // Register Views
+                    services.AddSingleton<MainWindow>();
+
+                    // Register ViewModels
+                    services.AddSingleton<MainViewModel>();
+
+                    // Register InventoryKamera Services
+                    services.AddSingleton<global::InventoryKamera.WeaponScraper>();
+                    services.AddSingleton<global::InventoryKamera.ArtifactScraper>();
+                    services.AddSingleton<global::InventoryKamera.CharacterScraper>();
+                    services.AddSingleton<global::InventoryKamera.MaterialScraper>();
+                    services.AddSingleton<global::InventoryKamera.InventoryKamera>();
+                })
+                .Build();
         }
 
         /// <summary>
@@ -24,7 +47,7 @@ namespace InventoryKamera.WinUI
         /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(LaunchActivatedEventArgs args)
         {
-            _window = new MainWindow();
+            _window = Host.Services.GetRequiredService<MainWindow>();
             _window.Activate();
         }
     }
