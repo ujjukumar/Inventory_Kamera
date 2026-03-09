@@ -1,108 +1,63 @@
-using System.Runtime.InteropServices;
-
 namespace InventoryKamera;
 
+/// <summary>
+/// Internal façade used by all Services-layer code.
+/// Every method delegates to <see cref="UserInterfaceBridge"/> so the
+/// host (WinForms) can register the real implementations at startup.
+/// </summary>
 internal static class UserInterface
 {
     public static void SetNavigation_Image(Bitmap bitmap)
-    {
-        // No-op for now, or maybe fire an event
-    }
-
-    public static void AddLog(string message)
-    {
-        // No-op, should use ILogger instead
-    }
-
-    public static void SetBitmap(Bitmap bitmap)
-    {
-         // No-op
-    }
-
-    public static void ResetCharacterDisplay()
-    {
-        // No-op
-    }
-
-    public static void IncrementCharacterCount()
-    {
-        // No-op
-    }
+        => UserInterfaceBridge.SetNavigationImage?.Invoke(bitmap);
 
     public static void AddError(string error)
-    {
-        // No-op
-    }
+        => UserInterfaceBridge.AddError?.Invoke(error);
 
-    public static void SetCharacter_NameAndElement(Bitmap bm, string name, string element)
-    {
-        // No-op
-    }
-
-    public static void SetCharacter_Level(Bitmap bm, int level, int maxLevel)
-    {
-        // No-op
-    }
-
-    public static void SetCharacter_Constellation(int constellation)
-    {
-        // No-op
-    }
+    public static void UnexpectedError(string message)
+        => UserInterfaceBridge.UnexpectedError?.Invoke(message);
 
     public static void SetGearPictureBox(Bitmap bm)
-    { 
-        // No-op 
-    }
+        => UserInterfaceBridge.SetGearPictureBox?.Invoke(bm);
 
     public static void SetGear(Bitmap bm, object gear)
-    {
-        // No-op
-    }
+        => UserInterfaceBridge.SetGear?.Invoke(bm, gear);
 
     public static void IncrementWeaponCount()
-    {
-        // No-op
-    }
+        => UserInterfaceBridge.IncrementWeaponCount?.Invoke();
 
     public static void IncrementArtifactCount()
-    {
-        // No-op
-    }
+        => UserInterfaceBridge.IncrementArtifactCount?.Invoke();
 
-    public static void UnexpectedError(string message) 
-    {
-        // No-op
-    }
-
-    public static void SetCharacter_Talent(Bitmap bm, string level, int index)
-    {
-        // No-op
-    }
+    public static void IncrementCharacterCount()
+        => UserInterfaceBridge.IncrementCharacterCount?.Invoke();
 
     public static void SetWeapon_Max(int max)
-    {
-        // No-op
-    }
+        => UserInterfaceBridge.SetWeaponMax?.Invoke(max);
 
     public static void SetArtifact_Max(int max)
-    {
-        // No-op
-    }
+        => UserInterfaceBridge.SetArtifactMax?.Invoke(max);
+
+    public static void ResetCharacterDisplay()
+        => UserInterfaceBridge.ResetCharacterDisplay?.Invoke();
+
+    public static void SetCharacter_NameAndElement(Bitmap bm, string name, string element)
+        => UserInterfaceBridge.SetCharacterNameAndElement?.Invoke(bm, name, element);
+
+    public static void SetCharacter_Level(Bitmap bm, int level, int maxLevel)
+        => UserInterfaceBridge.SetCharacterLevel?.Invoke(bm, level, maxLevel);
+
+    public static void SetCharacter_Constellation(int constellation)
+        => UserInterfaceBridge.SetCharacterConstellation?.Invoke(constellation);
+
+    public static void SetCharacter_Talent(Bitmap bm, string level, int index)
+        => UserInterfaceBridge.SetCharacterTalent?.Invoke(bm, level, index);
 
     public static void SetMainCharacterName(string name)
-    {
-        // No-op
-    }
+        => UserInterfaceBridge.SetMainCharacterName?.Invoke(name);
 
     public static void SetMaterial(Bitmap nameplate, Bitmap quantity, string name, int count)
-    {
-        // No-op
-    }
+        => UserInterfaceBridge.SetMaterial?.Invoke(nameplate, quantity, name, count);
 
     public static void SetMora(Bitmap bm, int count)
-    {
-        // No-op
-    }
-
-    // Add other methods as discovered from errors
+        => UserInterfaceBridge.SetMora?.Invoke(bm, count);
 }

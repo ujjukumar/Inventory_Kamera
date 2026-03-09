@@ -67,6 +67,35 @@ namespace InventoryKamera
 
 			// Navigation Image
 			navigation_PictureBox = _navigation_Image;
+
+			// Register callbacks so the Services layer can update the UI
+			RegisterBridgeCallbacks();
+		}
+
+		private static void RegisterBridgeCallbacks()
+		{
+			UserInterfaceBridge.SetNavigationImage = bm => SetNavigation_Image(bm);
+			UserInterfaceBridge.AddError = error => AddError(error);
+			UserInterfaceBridge.UnexpectedError = error => AddError(error);
+			UserInterfaceBridge.SetGearPictureBox = bm => SetGearPictureBox(bm);
+			UserInterfaceBridge.SetGear = (bm, gear) =>
+			{
+				if (gear is Weapon weapon) SetGear(bm, weapon);
+				else if (gear is Artifact artifact) SetGear(bm, artifact);
+			};
+			UserInterfaceBridge.IncrementWeaponCount = () => IncrementWeaponCount();
+			UserInterfaceBridge.IncrementArtifactCount = () => IncrementArtifactCount();
+			UserInterfaceBridge.IncrementCharacterCount = () => IncrementCharacterCount();
+			UserInterfaceBridge.SetWeaponMax = max => SetWeapon_Max(max);
+			UserInterfaceBridge.SetArtifactMax = max => SetArtifact_Max(max);
+			UserInterfaceBridge.ResetCharacterDisplay = () => ResetCharacterDisplay();
+			UserInterfaceBridge.SetCharacterNameAndElement = (bm, name, element) => SetCharacter_NameAndElement(bm, name, element);
+			UserInterfaceBridge.SetCharacterLevel = (bm, level, maxLevel) => SetCharacter_Level(bm, level, maxLevel);
+			UserInterfaceBridge.SetCharacterConstellation = level => SetCharacter_Constellation(level);
+			UserInterfaceBridge.SetCharacterTalent = (bm, level, index) => SetCharacter_Talent(bm, level, index);
+			UserInterfaceBridge.SetMainCharacterName = name => SetMainCharacterName(name);
+			UserInterfaceBridge.SetMaterial = (nameplate, quantity, name, count) => SetMaterial(nameplate, quantity, name, count);
+			UserInterfaceBridge.SetMora = (bm, count) => SetMora(bm, count);
 		}
 
 		private static void UpdateElements(Bitmap bm, string text, PictureBox pictureBox, TextBox textBox)
