@@ -173,24 +173,33 @@ namespace InventoryKamera
 				{
 					if (GenshinProcesor.Characters.ContainsKey(name.ToLower()))
 					{
-						string talentLeveledAtConst3 = character.NameGOOD.Contains("Traveler")
-                            ? (string)GenshinProcesor.Characters[name.ToLower()]["ConstellationOrder"][character.Element.ToLower()][0]
-                            : (string)GenshinProcesor.Characters[name.ToLower()]["ConstellationOrder"][0];
-                        string talentLeveledAtConst5 = character.NameGOOD.Contains("Traveler")
-							? (string)GenshinProcesor.Characters[name.ToLower()]["ConstellationOrder"][character.Element.ToLower()][1]
-							: (string)GenshinProcesor.Characters[name.ToLower()]["ConstellationOrder"][1];
-
-						// Scale down talents
-						if (character.Constellation >= 3)
+						var constellationOrder = GenshinProcesor.Characters[name.ToLower()]["ConstellationOrder"];
+						if (character.NameGOOD.Contains("Traveler") && constellationOrder != null && constellationOrder.Type == Newtonsoft.Json.Linq.JTokenType.Object)
 						{
-							_logger.LogInformation("{Name} constellation 3+, adjusting scanned {Talent} level", character.NameGOOD, talentLeveledAtConst3);
-							character.Talents[talentLeveledAtConst3] -= 3;
+							constellationOrder = constellationOrder[character.Element.ToLower()];
 						}
 
-						if (character.Constellation >= 5)
+						if (constellationOrder != null && constellationOrder.Type == Newtonsoft.Json.Linq.JTokenType.Array && constellationOrder.HasValues)
 						{
-                            _logger.LogInformation("{Name} constellation 5+, adjusting scanned {Talent} level", character.NameGOOD, talentLeveledAtConst5);
-                            character.Talents[talentLeveledAtConst5] -= 3;
+							string talentLeveledAtConst3 = (string)constellationOrder[0];
+							string talentLeveledAtConst5 = (string)constellationOrder[1];
+
+							// Scale down talents
+							if (character.Constellation >= 3 && !string.IsNullOrEmpty(talentLeveledAtConst3) && character.Talents.ContainsKey(talentLeveledAtConst3))
+							{
+								_logger.LogInformation("{Name} constellation 3+, adjusting scanned {Talent} level", character.NameGOOD, talentLeveledAtConst3);
+								character.Talents[talentLeveledAtConst3] -= 3;
+							}
+
+							if (character.Constellation >= 5 && !string.IsNullOrEmpty(talentLeveledAtConst5) && character.Talents.ContainsKey(talentLeveledAtConst5))
+							{
+								_logger.LogInformation("{Name} constellation 5+, adjusting scanned {Talent} level", character.NameGOOD, talentLeveledAtConst5);
+								character.Talents[talentLeveledAtConst5] -= 3;
+							}
+						}
+						else
+						{
+							_logger.LogInformation("Could not find constellation order for {Name} {Element}. Skipping talent adjustment.", character.NameGOOD, character.Element);
 						}
 					}
 					else

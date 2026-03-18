@@ -209,6 +209,13 @@ namespace InventoryKamera.Properties
 
         #region Update Tracking
 
+        private bool _checkForUpdates = false;
+        public bool CheckForUpdates
+        {
+            get => _checkForUpdates;
+            set => SetField(ref _checkForUpdates, value);
+        }
+
         private bool _upgradeNeeded = true;
         public bool UpgradeNeeded
         {

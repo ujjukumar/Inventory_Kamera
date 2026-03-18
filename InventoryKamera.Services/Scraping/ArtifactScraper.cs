@@ -229,12 +229,18 @@ namespace InventoryKamera
                 card
             };
 
-            bool belowRarity = GetRarity(name) < Settings.MinimumArtifactRarity;
-            bool belowLevel = ScanArtifactLevel(level) < Settings.MinimumArtifactLevel;
+            int artifactRarity = GetRarity(name);
+            int artifactLevel = ScanArtifactLevel(level);
+
+            _logger.LogInformation("Artifact {Id} - Rarity: {Rarity}, Level: {Level}", id, artifactRarity, artifactLevel);
+
+            bool belowRarity = artifactRarity > 0 && artifactRarity < Settings.MinimumArtifactRarity;
+            bool belowLevel = artifactLevel >= 0 && artifactLevel < Settings.MinimumArtifactLevel;
             StopScanning = (SortByLevel && belowLevel) || (!SortByLevel && belowRarity);
 
             if (StopScanning || belowRarity || belowLevel)
             {
+                _logger.LogInformation("Skipping Artifact {Id}. StopScanning: {StopScanning}, BelowRarity: {BelowRarity}, BelowLevel: {BelowLevel}", id, StopScanning, belowRarity, belowLevel);
                 artifactImages.ForEach(i => i.Dispose());
                 return Task.CompletedTask;
             }

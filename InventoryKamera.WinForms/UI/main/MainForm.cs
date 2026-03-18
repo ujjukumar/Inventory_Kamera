@@ -317,6 +317,12 @@ namespace InventoryKamera
                         good.WriteToJSON(OutputPath_TextBox.Text);
                         Logger.Info("Exported data");
 
+                        Invoke((MethodInvoker)delegate
+                        {
+                            Clipboard.SetText(good.ToString());
+                        });
+                        Logger.Info("Copied data to clipboard");
+
                         UserInterface.SetProgramStatus("Finished");
                         //OpenOptimizerDialog(good);
                     }
@@ -488,9 +494,9 @@ namespace InventoryKamera
             }
         }
 
-        private void DatabaseUpdateMenuItem_Click(object sender, EventArgs e)
+        private async void DatabaseUpdateMenuItem_Click(object sender, EventArgs e)
         {
-            var status = databaseManager.UpdateGameData();
+            var status = await Task.Run(() => databaseManager.UpdateGameData());
             switch (status)
             {
                 case UpdateStatus.Fail:
@@ -507,7 +513,7 @@ namespace InventoryKamera
                         buttons: MessageBoxButtons.YesNo,
                         icon: MessageBoxIcon.Information) == DialogResult.Yes)
                     {
-                        status = databaseManager.UpdateGameData(force: true);
+                        status = await Task.Run(() => databaseManager.UpdateGameData(force: true));
                         switch (status)
                         {
                             case UpdateStatus.Fail:
@@ -577,9 +583,15 @@ namespace InventoryKamera
         private void MainForm_Shown(object sender, EventArgs e)
         {
 #if !DEBUG
-            CheckForKameraUpdates();
+            if (Settings.CheckForUpdates)
+            {
+                CheckForKameraUpdates();
+            }
 #endif
-            CheckForGenshinUpdates();
+            if (Settings.CheckForUpdates)
+            {
+                CheckForGenshinUpdates();
+            }
         }
 
         private async void CheckForKameraUpdates()
