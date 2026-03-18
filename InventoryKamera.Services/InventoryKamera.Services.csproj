@@ -8,7 +8,7 @@
     <UseWPF>false</UseWPF>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseSystemDrawing>true</UseSystemDrawing>
-    <Platforms>x64</Platforms>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
