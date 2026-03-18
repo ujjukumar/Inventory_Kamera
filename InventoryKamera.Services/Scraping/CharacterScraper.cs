@@ -33,14 +33,14 @@ namespace InventoryKamera
 				var character = ScanCharacter(first);
 				
 				// Skip mannequins/test characters
-					if (character.NameGOOD.Contains("Manequin"))
-					{
-						_logger.LogInformation("Skipping mannequin/test character: {Name}", character.NameGOOD);
-						Navigation.SelectNextCharacter();
-						continue;
-					}
+				if (!string.IsNullOrEmpty(character.NameGOOD) && character.NameGOOD.Contains("Manequin"))
+				{
+					_logger.LogInformation("Skipping mannequin/test character: {Name}", character.NameGOOD);
+					Navigation.SelectNextCharacter();
+					continue;
+				}
 				
-				if (Characters.Count > 0 && character.NameGOOD == Characters.ElementAt(0).NameGOOD) break;
+				if (Characters.Count > 0 && !string.IsNullOrEmpty(character.NameGOOD) && character.NameGOOD == Characters.ElementAt(0).NameGOOD) break;
 				
 				if (character.IsValid())
 				{
