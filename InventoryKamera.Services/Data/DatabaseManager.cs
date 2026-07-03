@@ -5,7 +5,6 @@ using System.Collections.Concurrent;
 using System.Data;
 using System.Diagnostics;
 using System.Globalization;
-using System.Net;
 using System.Text.RegularExpressions;
 
 
@@ -35,9 +34,12 @@ namespace InventoryKamera
 
         private readonly string NewVersion = "version.txt";
 
-        private const string commitsAPIURL = "https://gitlab.com/api/v4/projects/53216109/repository/commits";
-        private const string repoBaseURL = "https://gitlab.com/Dimbreath/AnimeGameData/-/raw/master/";
+        // Project 83871005 == Dimbreath/AnimeGameData2, the same repo repoBaseURL pulls data from.
+        // Must match repoBaseURL so the detected game version stays in sync with the downloaded data.
+        private const string commitsAPIURL = "https://gitlab.com/api/v4/projects/83871005/repository/commits";
+        private const string repoBaseURL = "https://gitlab.com/Dimbreath/AnimeGameData2/-/raw/main/";
         private const string TextMapEnURL = repoBaseURL + "TextMap/TextMapEN.json";
+        private const string TextMapMediumEnURL = repoBaseURL + "TextMap/TextMap_MediumEN.json";
         private const string CharactersURL = repoBaseURL + "ExcelBinOutput/AvatarExcelConfigData.json";
         private const string ConstellationsURL = repoBaseURL + "ExcelBinOutput/FetterInfoExcelConfigData.json";
         private const string TalentsURL = repoBaseURL + "ExcelBinOutput/AvatarTalentExcelConfigData.json";
@@ -119,7 +121,7 @@ namespace InventoryKamera
                     if (match.Success)
                     {
                         var v = match.Groups[1].Value;
-                        Debug.WriteLine("Latest version found {0}", v);
+                        Debug.WriteLine($"Latest version found {v}");
                         return new Version(v);
                     }
                 }
@@ -197,8 +199,14 @@ namespace InventoryKamera
                 {
                     Logger.Info("Forcing update for game data");
                     Settings.LastUpdateCheck = DateTime.MinValue;
-                    RemoteVersion = CheckRemoteVersion();
                 }
+
+                // Always resolve the remote version so LocalVersion/version.txt stays in sync with
+                // the data that actually gets downloaded, even on a non-forced update. Keep the
+                // previous version if the lookup fails (e.g. network error) instead of nulling it.
+                var latestVersion = CheckRemoteVersion();
+                if (latestVersion != null)
+                    RemoteVersion = latestVersion;
 
                 var lists = Enum.GetValues(typeof(ListType)).Cast<ListType>().ToList();
 
@@ -258,10 +266,22 @@ namespace InventoryKamera
             {
                 if (!Mappings.Any())
                 {
-                    Mappings = new ConcurrentDictionary<string, string>(JObject.Parse(LoadJsonFromURLAsync(TextMapEnURL))
+                    var mapping = JObject.Parse(LoadJsonFromURLAsync(TextMapEnURL))
                         .ToObject<Dictionary<string, string>>()
                         .Where(e => !string.IsNullOrWhiteSpace(e.Value)) // Remove any mapping with empty
-                        .ToDictionary(i => i.Key, i => i.Value));
+                        .ToDictionary(i => i.Key, i => i.Value);
+
+                    var mediumMapping = JObject.Parse(LoadJsonFromURLAsync(TextMapMediumEnURL))
+                        .ToObject<Dictionary<string, string>>()
+                        .Where(e => !string.IsNullOrWhiteSpace(e.Value)) // Remove any mapping with empty
+                        .ToDictionary(i => i.Key, i => i.Value);
+
+                    foreach (var entry in mediumMapping)
+                    {
+                        mapping[entry.Key] = entry.Value; // Should be no overlap
+                    }
+
+                    Mappings = new ConcurrentDictionary<string, string>(mapping);
                 }
             }
         }
@@ -326,11 +346,14 @@ namespace InventoryKamera
 
         private UpdateStatus UpdateCharacters(bool force)
         {
-            if (force) File.Delete(ListsDir + CharactersJson);
-
             var status = UpdateStatus.Skipped;
 
-            var data = JToken.Parse(LoadJsonFromFile(CharactersJson)).ToObject<ConcurrentDictionary<string, JObject>>();
+            // Load existing data (or empty dict if file doesn't exist or force mode)
+            var data = force
+                ? new ConcurrentDictionary<string, JObject>()
+                : JToken.Parse(LoadJsonFromFile(CharactersJson)).ToObject<ConcurrentDictionary<string, JObject>>();
+
+            var newData = new ConcurrentDictionary<string, JObject>(data);
 
             try
             {
@@ -356,6 +379,8 @@ namespace InventoryKamera
                         string nameKey = nameGOOD.ToLower();
                         int characterID = (int)character["id"];
 
+                        if (characterID > 10000900) return; // Not playable characters
+
                         string const3Description = "";
                         string const5Description = "";
                         string skill = "";
@@ -363,7 +388,7 @@ namespace InventoryKamera
 
                         var value = new JObject();
 
-                        if (!data.ContainsKey(nameKey))
+                        if (!newData.ContainsKey(nameKey))
                         {
                             value.Add("GOOD", nameGOOD);
 
@@ -493,7 +518,7 @@ namespace InventoryKamera
 
                             value.Add("WeaponType", (int)weaponType);
 
-                            if (data.TryAdd(nameKey, value)) status = UpdateStatus.Success;
+                            if (newData.TryAdd(nameKey, value)) status = UpdateStatus.Success;
                         }
                     }
                     catch (Exception ex)
@@ -532,19 +557,85 @@ namespace InventoryKamera
                 status = UpdateStatus.Fail;
             }            
 
+            // Validate the new data before saving
             if (status == UpdateStatus.Success)
-                SaveJsonToFile(JsonConvert.SerializeObject(new SortedDictionary<string, JObject>(data)), CharactersJson);
+            {
+                if (ValidateCharacterData(newData))
+                {
+                    Logger.Info("Character data validation passed. Saving {0} characters.", newData.Count);
+                    SaveJsonToFile(JsonConvert.SerializeObject(new SortedDictionary<string, JObject>(newData)), CharactersJson);
+                }
+                else
+                {
+                    Logger.Error("Character data validation failed. Keeping existing data.");
+                    status = UpdateStatus.Fail;
+                }
+            }
 
             return status;
         }
 
+        private bool ValidateCharacterData(ConcurrentDictionary<string, JObject> data)
+        {
+            // Sanity checks to prevent saving corrupt/empty data
+            if (data == null || data.Count == 0)
+            {
+                Logger.Error("Validation failed: Character data is null or empty");
+                return false;
+            }
+
+            // Expect at least 50 characters (as of 6.5.0 there are 90+)
+            if (data.Count < 50)
+            {
+                Logger.Error("Validation failed: Only {0} characters found (expected at least 50)", data.Count);
+                return false;
+            }
+
+            // Check that critical characters exist (sanity check for complete data)
+            string[] criticalCharacters = { "traveler", "amber", "kaeya", "lisa" };
+            foreach (var charKey in criticalCharacters)
+            {
+                if (!data.ContainsKey(charKey))
+                {
+                    Logger.Error("Validation failed: Missing critical character '{0}'", charKey);
+                    return false;
+                }
+            }
+
+            // Validate structure of a sample character
+            foreach (var kvp in data.Take(5))
+            {
+                var charData = kvp.Value;
+                if (!charData.ContainsKey("GOOD") ||
+                    !charData.ContainsKey("Element") ||
+                    !charData.ContainsKey("WeaponType"))
+                {
+                    Logger.Error("Validation failed: Character '{0}' missing required fields", kvp.Key);
+                    return false;
+                }
+
+                // Check ConstellationOrder exists (except for traveler which has element-specific)
+                if (kvp.Key != "traveler" && !charData.ContainsKey("ConstellationOrder"))
+                {
+                    Logger.Error("Validation failed: Character '{0}' missing ConstellationOrder", kvp.Key);
+                    return false;
+                }
+            }
+
+            Logger.Debug("Character data validation passed: {0} characters, all checks OK", data.Count);
+            return true;
+        }
+
         private UpdateStatus UpdateArtifacts(bool force)
         {
-            if (force) File.Delete(ListsDir + ArtifactsJson);
-
             var status = UpdateStatus.Skipped;
 
-            var data = JToken.Parse(LoadJsonFromFile(ArtifactsJson)).ToObject<ConcurrentDictionary<string, JObject>>();
+            // Load existing data (or empty dict if file doesn't exist or force mode)
+            var data = force
+                ? new ConcurrentDictionary<string, JObject>()
+                : JToken.Parse(LoadJsonFromFile(ArtifactsJson)).ToObject<ConcurrentDictionary<string, JObject>>();
+
+            var newData = new ConcurrentDictionary<string, JObject>(data);
 
             var artifactDisplays = JArray.Parse(LoadJsonFromURLAsync(ArtifactsDisplayItemURL)).ToObject<List<JObject>>();
             artifactDisplays.RemoveAll(a => a.TryGetValue("icon", out var icon) && !icon.ToString().Contains("RelicIcon"));
@@ -565,7 +656,7 @@ namespace InventoryKamera
                         var setNameNormalized = setName;
                         var setID = (int)artifactDisplay["param"];
 
-                        if (!data.ContainsKey(setNameKey))
+                        if (!newData.ContainsKey(setNameKey))
                         {
                             foreach (var set in codex)
                             {
@@ -607,7 +698,7 @@ namespace InventoryKamera
                                     { "normalizedName", setNameGOOD.ToLower() },
                                     { "artifacts", artifacts }
                                 };
-                                if (data.TryAdd(setNameKey, value) && status != UpdateStatus.Fail) status = UpdateStatus.Success;
+                                if (newData.TryAdd(setNameKey, value) && status != UpdateStatus.Fail) status = UpdateStatus.Success;
                             }
                         }
                     }
@@ -620,19 +711,76 @@ namespace InventoryKamera
                 }
             });
 
+            // Validate the new data before saving
             if (status == UpdateStatus.Success)
-                SaveJsonToFile(JsonConvert.SerializeObject(new SortedDictionary<string, JObject>(data)), ArtifactsJson);
+            {
+                if (ValidateArtifactData(newData))
+                {
+                    Logger.Info("Artifact data validation passed. Saving {0} artifact sets.", newData.Count);
+                    SaveJsonToFile(JsonConvert.SerializeObject(new SortedDictionary<string, JObject>(newData)), ArtifactsJson);
+                }
+                else
+                {
+                    Logger.Error("Artifact data validation failed. Keeping existing data.");
+                    status = UpdateStatus.Fail;
+                }
+            }
 
             return status;
         }
 
+        private bool ValidateArtifactData(ConcurrentDictionary<string, JObject> data)
+        {
+            if (data == null || data.Count == 0)
+            {
+                Logger.Error("Validation failed: Artifact data is null or empty");
+                return false;
+            }
+
+            // Expect at least 30 artifact sets (as of 6.5.0 there are 40+)
+            if (data.Count < 30)
+            {
+                Logger.Error("Validation failed: Only {0} artifact sets found (expected at least 30)", data.Count);
+                return false;
+            }
+
+            // Check that critical artifact sets exist
+            string[] criticalSets = { "gladiatorsfinale", "wandererstroupe", "noblesseoblige" };
+            foreach (var setKey in criticalSets)
+            {
+                if (!data.ContainsKey(setKey))
+                {
+                    Logger.Error("Validation failed: Missing critical artifact set '{0}'", setKey);
+                    return false;
+                }
+            }
+
+            // Validate structure of a sample set
+            foreach (var kvp in data.Take(3))
+            {
+                var setData = kvp.Value;
+                if (!setData.ContainsKey("GOOD") ||
+                    !setData.ContainsKey("artifacts"))
+                {
+                    Logger.Error("Validation failed: Artifact set '{0}' missing required fields", kvp.Key);
+                    return false;
+                }
+            }
+
+            Logger.Debug("Artifact data validation passed: {0} sets, all checks OK", data.Count);
+            return true;
+        }
+
         private UpdateStatus UpdateWeapons(bool force)
         {
-            if (force) File.Delete(ListsDir + WeaponsJson);
-
             var status = UpdateStatus.Skipped;
 
-            var data = JToken.Parse(LoadJsonFromFile(WeaponsJson)).ToObject<ConcurrentDictionary<string, string>>();
+            // Load existing data (or empty dict if file doesn't exist or force mode)
+            var data = force
+                ? new ConcurrentDictionary<string, string>()
+                : JToken.Parse(LoadJsonFromFile(WeaponsJson)).ToObject<ConcurrentDictionary<string, string>>();
+
+            var newData = new ConcurrentDictionary<string, string>(data);
 
             try
             {
@@ -649,7 +797,7 @@ namespace InventoryKamera
                             string nameGOOD = Regex.Replace(PascalCase, @"[\W]", string.Empty);              // DullBlade
                             string nameKey = nameGOOD.ToLower();                                             // dullblade
 
-                            if (!data.TryAdd(nameKey, nameGOOD)) status = UpdateStatus.Success;
+                            if (newData.TryAdd(nameKey, nameGOOD)) status = UpdateStatus.Success;
                         }
                         else Logger.Warn("Weapon hash {0} not found in Mappings. It's likely unreleased.", weapon["nameTextMapHash"].ToString());
                     }
@@ -662,16 +810,56 @@ namespace InventoryKamera
                 status = UpdateStatus.Fail;
             }
 
+            // Validate the new data before saving
             if (status == UpdateStatus.Success)
-                SaveJsonToFile(JsonConvert.SerializeObject(new SortedDictionary<string, string>(data)), WeaponsJson);
+            {
+                if (ValidateWeaponData(newData))
+                {
+                    Logger.Info("Weapon data validation passed. Saving {0} weapons.", newData.Count);
+                    SaveJsonToFile(JsonConvert.SerializeObject(new SortedDictionary<string, string>(newData)), WeaponsJson);
+                }
+                else
+                {
+                    Logger.Error("Weapon data validation failed. Keeping existing data.");
+                    status = UpdateStatus.Fail;
+                }
+            }
 
             return status;
         }
 
+        private bool ValidateWeaponData(ConcurrentDictionary<string, string> data)
+        {
+            if (data == null || data.Count == 0)
+            {
+                Logger.Error("Validation failed: Weapon data is null or empty");
+                return false;
+            }
+
+            // Expect at least 100 weapons (as of 6.5.0 there are 150+)
+            if (data.Count < 100)
+            {
+                Logger.Error("Validation failed: Only {0} weapons found (expected at least 100)", data.Count);
+                return false;
+            }
+
+            // Check that critical weapons exist
+            string[] criticalWeapons = { "dullblade", "silversword", "beginnersprotector" };
+            foreach (var weaponKey in criticalWeapons)
+            {
+                if (!data.ContainsKey(weaponKey))
+                {
+                    Logger.Error("Validation failed: Missing critical weapon '{0}'", weaponKey);
+                    return false;
+                }
+            }
+
+            Logger.Debug("Weapon data validation passed: {0} weapons, all checks OK", data.Count);
+            return true;
+        }
+
         private UpdateStatus UpdateMaterials(bool force)
         {
-            if (force) File.Delete(ListsDir + MaterialsJson);
-
             var status = UpdateStatus.Skipped;
 
             var materialCategories = new List<string>
@@ -684,7 +872,12 @@ namespace InventoryKamera
                 "MATERIAL_WEAPON_EXP_STONE",
             };
 
-            var data = JToken.Parse(LoadJsonFromFile(MaterialsJson)).ToObject<ConcurrentDictionary<string, string>>();
+            // Load existing data (or empty dict if file doesn't exist or force mode)
+            var data = force
+                ? new ConcurrentDictionary<string, string>()
+                : JToken.Parse(LoadJsonFromFile(MaterialsJson)).ToObject<ConcurrentDictionary<string, string>>();
+
+            var newData = new ConcurrentDictionary<string, string>(data);
 
             var materials = JArray.Parse(LoadJsonFromURLAsync(MaterialsURL)).ToObject<List<JObject>>();
             materials.RemoveAll(material => !(material.TryGetValue("materialType", out var materialType) && materialCategories.Contains(materialType.ToString())));
@@ -700,7 +893,7 @@ namespace InventoryKamera
                         var nameGood = Regex.Replace(PascalCase, @"[\W]", string.Empty);
                         var nameKey = nameGood.ToLower();
 
-                        if (data.TryAdd(nameKey, nameGood) && status != UpdateStatus.Fail) status = UpdateStatus.Success;
+                        if (newData.TryAdd(nameKey, nameGood) && status != UpdateStatus.Fail) status = UpdateStatus.Success;
                     }
                     else
                     {
@@ -710,10 +903,41 @@ namespace InventoryKamera
                 catch (Exception ex) { Logger.Warn(ex); }
             });
 
+            // Validate the new data before saving
             if (status == UpdateStatus.Success)
-                SaveJsonToFile(JsonConvert.SerializeObject(new SortedDictionary<string, string>(data)), MaterialsJson);
+            {
+                if (ValidateMaterialData(newData))
+                {
+                    Logger.Info("Material data validation passed. Saving {0} materials.", newData.Count);
+                    SaveJsonToFile(JsonConvert.SerializeObject(new SortedDictionary<string, string>(newData)), MaterialsJson);
+                }
+                else
+                {
+                    Logger.Error("Material data validation failed. Keeping existing data.");
+                    status = UpdateStatus.Fail;
+                }
+            }
 
             return status;
+        }
+
+        private bool ValidateMaterialData(ConcurrentDictionary<string, string> data)
+        {
+            if (data == null || data.Count == 0)
+            {
+                Logger.Error("Validation failed: Material data is null or empty");
+                return false;
+            }
+
+            // Expect at least 50 materials (as of 6.5.0 there are 100+)
+            if (data.Count < 50)
+            {
+                Logger.Error("Validation failed: Only {0} materials found (expected at least 50)", data.Count);
+                return false;
+            }
+
+            Logger.Debug("Material data validation passed: {0} materials, all checks OK", data.Count);
+            return true;
         }
 
         private string LoadJsonFromFile(string fileName)
