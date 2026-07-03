@@ -385,8 +385,11 @@ namespace InventoryKamera
 			if (mode.Key == 0 && counts.Count >= 5) 
 				return 0;
 			
+			// The dictionary maps a detected quantity (Key) to how often it was read (Value).
+			// The most common read was 0, which is usually a misread; fall back to the next
+			// most common detected quantity (its Key), not its frequency (Value).
 			counts.Remove(mode.Key);
-			return SafeExtractMaxCounter(counts)?.Value ?? 0;
+			return SafeExtractMaxCounter(counts)?.Key ?? 0;
 		}
 
 		private static KeyValuePair<int, int>? SafeExtractMaxCounter(Dictionary<int, int> counts)
