@@ -128,6 +128,33 @@ namespace InventoryKamera
             else throw new KeyNotFoundException($"Could not find '{target}' entry in characters.json");
         }
 
+        /// <summary>
+        /// Ensures placeholder "manequin1"/"manequin2" entries exist in the in-memory
+        /// character list so they can be given custom names and omitted during a scan.
+        /// These entries are runtime-only and are intentionally not written to
+        /// characters.json (which is overwritten when game data is updated).
+        /// </summary>
+        internal static void EnsureManequinEntries()
+        {
+            if (Characters == null) return;
+
+            const string note = "Placeholder so manequins can be omitted during scanning; Genshin Optimizer does not model them.";
+
+            foreach (var (key, good) in new[] { ("manequin1", "Manequin1"), ("manequin2", "Manequin2") })
+            {
+                if (Characters.ContainsKey(key)) continue;
+
+                Characters[key] = new JObject
+                {
+                    ["GOOD"] = good,
+                    ["ConstellationName"] = new JArray(note),
+                    ["ConstellationOrder"] = new JArray("skill", "burst"),
+                    ["Element"] = new JArray("electro", "pyro", "dendro", "geo", "hydro", "anemo"),
+                    ["WeaponType"] = 0
+                };
+            }
+        }
+
         internal static void AssignTravelerName(string name)
         {
             name = string.IsNullOrWhiteSpace(name) ? CharacterScraper.ScanMainCharacterName() : name.ToLower();

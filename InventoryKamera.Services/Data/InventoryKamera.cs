@@ -157,116 +157,14 @@ namespace InventoryKamera
 			// Assign Traveler's custom name
 			GenshinProcesor.AssignTravelerName(Settings.TravelerName);
 
-            // Assign Wanderer's custom name
-            GenshinProcesor.UpdateCharacterName("wanderer", Settings.WandererName);
+			// Assign Wanderer's custom name
+			GenshinProcesor.UpdateCharacterName("wanderer", Settings.WandererName);
 
-			try
-			{
-                GenshinProcesor.UpdateCharacterName("manequin1", Settings.Manequin1Name);
-                GenshinProcesor.UpdateCharacterName("manequin2", Settings.Manequin2Name);
-            }
-			catch(Exception)
-			{
-				// Source - https://stackoverflow.com/questions/33081102/how-to-add-a-new-object-to-an-existing-json-file
-				// Posted by Alex, modified by community. See post 'Timeline' for change history
-				// Retrieved 2025-11-07, License - CC BY-SA 3.0
-
-				//load from file
-
-				var path = $"./inventorylists/characters.json";
-
-				var initialJson = File.ReadAllText(path, Encoding.Default);
-
-				var jsonToOutput = initialJson.Remove(initialJson.Length - 3, 3);
-
-				#region manequins
-				//"manequin1": {
-				//  "GOOD": "Manequin1",
-				//	"ConstellationName": [
-				//		"support for manequins to ommit them during scan, as of writing it (6th November 2025) GO doesn't support manequins"
-				//	],
-				//	"ConstellationOrder": [
-				//		"burst",
-				//		"skill"
-				//	],
-				//	"Element": [
-				//		"electro",
-				//		"pyro",
-				//		"dendro",
-				//		"geo",
-				//		"hydro",
-				//		"anemo"
-				//	],
-				//	"WeaponType": 0
-				//},
-				//"manequin2": {
-				//	"GOOD": "Manequin2",
-				//	"ConstellationName": [
-				//		"support for manequins to ommit them during scan, as of writing it (6th November 2025) GO doesn't support manequins"
-				//	],
-				//	"ConstellationOrder": [
-				//		"burst",
-				//		"skill"
-				//	],
-				//	"Element": [
-				//		"electro",
-				//		"pyro",
-				//		"dendro",
-				//		"geo",
-				//		"hydro",
-				//		"anemo"
-				//	],
-				//	"WeaponType": 0
-				//}
-				#endregion
-
-
-				var manequinData = ",\n" +
-								" \"manequin1\":{\n" +
-								"  \"GOOD\":\"Manequin1\",\n" +
-								"  \"ConstellationName\":[\n" +
-								"   \"support for manequins to ommit them during scan, as of writing it (6th November 2025) GO doesn't support manequins\"\n" +
-								"  ],\n" +
-                                "  \"ConstellationOrder\":[\n" +
-                                "   \"burst\",\n" +
-                                "   \"skills\"\n" +
-                                "  ],\n" +
-                                "  \"Element\":[\n" +
-                                "   \"electro\",\n" +
-                                "   \"pyro\",\n" +
-                                "   \"dendro\",\n" +
-                                "   \"geo\",\n" +
-                                "   \"hydro\",\n" +
-                                "   \"anemo\"\n" +
-								"  ],\n" +
-								"  \"WeaponType\": 0" +
-								" },\n" +
-                                " \"manequin2\":{\n" +
-                                "  \"GOOD\":\"Manequin2\",\n" +
-                                "  \"ConstellationName\":[\n" +
-                                "   \"support for manequins to ommit them during scan, as of writing it (6th November 2025) GO doesn't support manequins\"\n" +
-                                "  ],\n" +
-                                "  \"ConstellationOrder\":[\n" +
-                                "   \"burst\",\n" +
-                                "   \"skills\"\n" +
-                                "  ],\n" +
-                                "  \"Element\":[\n" +
-                                "   \"electro\",\n" +
-                                "   \"pyro\",\n" +
-                                "   \"dendro\",\n" +
-                                "   \"geo\",\n" +
-                                "   \"hydro\",\n" +
-                                "   \"anemo\"\n" +
-                                "  ],\n" +
-                                "  \"WeaponType\": 0" +
-                                " }\n" +
-                                "}";
-				jsonToOutput += manequinData;
-                //save to file here
-                File.WriteAllText(path, jsonToOutput);
-
-                GatherData(_cancellationToken);
-			}
+			// Ensure manequin placeholder entries exist in-memory so custom manequin
+			// names can be applied and those slots omitted during the scan.
+			GenshinProcesor.EnsureManequinEntries();
+			GenshinProcesor.UpdateCharacterName("manequin1", Settings.Manequin1Name);
+			GenshinProcesor.UpdateCharacterName("manequin2", Settings.Manequin2Name);
 
 			// Check for cancellation before starting scans
 			_cancellationToken.ThrowIfCancellationRequested();
