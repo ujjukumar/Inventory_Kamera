@@ -53,6 +53,7 @@ internal static class Program
             .ConfigureServices((context, services) =>
             {
                 services.AddSingleton<MainForm>();
+                services.AddSingleton<DatabaseManager>();
                 services.AddTransient<InventoryKamera>(); // Transient because it's re-created for scans
                 services.AddTransient<WeaponScraper>();
                 services.AddTransient<ArtifactScraper>();
