@@ -406,10 +406,14 @@ namespace InventoryKamera
 
 		private void AwaitProcessors()
 		{
-			while (ImageProcessors.Count > 0)
+			// Block until every worker thread has exited. Thread.Join yields the CPU
+			// while waiting instead of the previous tight RemoveAll() spin loop, which
+			// pegged a core at 100% for the entire scan.
+			foreach (var processor in ImageProcessors)
 			{
-				ImageProcessors.RemoveAll(process => !process.IsAlive);
+				processor.Join();
 			}
+			ImageProcessors.Clear();
 			b_threadCancel = false;
 		}
 

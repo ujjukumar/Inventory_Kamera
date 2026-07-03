@@ -12,8 +12,9 @@ namespace InventoryKamera
 {
     public class DatabaseManager
     {
-        private static readonly HttpClient _httpClient = new HttpClient();
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
+        private readonly object _fileLock = new object();
         private AppSettings Settings => SettingsService.Instance.Settings;
         private string _listdir = @".\inventorylists\";
 
@@ -107,12 +108,14 @@ namespace InventoryKamera
         }
 
         private Version CheckRemoteVersion()
-        { 
-            using (var response = new HttpClient().GetAsync(commitsAPIURL))
-            {
-                string pattern = @"(\d+\.\d+\.\d+)";
+        {
+            string pattern = @"(\d+\.\d+\.\d+)";
 
-                string body = response.Result.Content.ReadAsStringAsync().Result;
+            using (var response = _httpClient.GetAsync(commitsAPIURL).GetAwaiter().GetResult())
+            {
+                response.EnsureSuccessStatusCode();
+
+                string body = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 var commits = JsonConvert.DeserializeObject<List<JObject>>(body);
                 foreach (var commit in commits)
                 {
@@ -293,14 +296,7 @@ namespace InventoryKamera
 
         private string LoadJsonFromURLAsync(string url)
         {
-            try
-            {
-                return _httpClient.GetStringAsync(url).GetAwaiter().GetResult();
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+            return _httpClient.GetStringAsync(url).GetAwaiter().GetResult();
         }
 
         private UpdateStatus UpdateList(ListType list, bool force = false)
@@ -942,19 +938,31 @@ namespace InventoryKamera
 
         private string LoadJsonFromFile(string fileName)
         {
-            lock (this)
+            lock (_fileLock)
             {
+                var path = ListsDir + fileName;
+
+                // A missing file is an expected first-run/force-update state: return an
+                // empty object so callers start from a clean slate.
+                if (!File.Exists(path))
+                {
+                    return "{}";
+                }
+
                 try
                 {
-                    using (StreamReader file = File.OpenText(ListsDir + fileName))
+                    using (StreamReader file = File.OpenText(path))
                     using (JsonTextReader reader = new JsonTextReader(file))
                     {
                         return JToken.ReadFrom(reader).ToString();
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    File.Create(ListsDir + fileName).Close();
+                    // The file exists but could not be read/parsed (corruption, lock,
+                    // permissions). Do NOT overwrite it - that would destroy recoverable
+                    // data. Surface an empty object but leave the file intact.
+                    Logger.Error(ex, "Failed to read existing game data file '{FileName}'; leaving it untouched", fileName);
                     return "{}";
                 }
             }
@@ -962,7 +970,7 @@ namespace InventoryKamera
 
         private bool SaveJsonToFile(string json, string fileName)
         {
-            lock (this)
+            lock (_fileLock)
             {
                 try
                 {
