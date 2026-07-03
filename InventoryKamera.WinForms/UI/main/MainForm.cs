@@ -672,7 +672,6 @@ namespace InventoryKamera
                 _logger.LogWarning(ex, "Could not check for list updates");
                 MessageBox.Show("Could not check for updates. Consider trying again in an hour or so.", "Game Version Update", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            Properties.Settings.Default.LastUpdateCheck = DateTime.Now;
             Settings.LastUpdateCheck = DateTime.Now;
         }
 

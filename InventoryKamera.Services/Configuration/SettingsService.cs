@@ -9,7 +9,7 @@ namespace InventoryKamera.Properties
 {
     /// <summary>
     /// Service for loading and saving application settings.
-    /// Replaces the legacy JsonUserSettingsProvider with a simpler, modern approach.
+    /// Stores settings as JSON in the user's local application data folder.
     /// </summary>
     public sealed class SettingsService
     {
@@ -178,82 +178,6 @@ namespace InventoryKamera.Properties
             catch (Exception ex)
             {
                 Logger.Error(ex, "Unexpected error saving settings");
-            }
-        }
-
-        /// <summary>
-        /// Migrates settings from the legacy Properties.Settings.Default format.
-        /// Call this once on application startup to transfer old settings.
-        /// </summary>
-        public void MigrateFromLegacySettings()
-        {
-            try
-            {
-                // Check if we've already migrated
-                if (!Settings.UpgradeNeeded)
-                {
-                    return;
-                }
-
-                // Check if legacy settings exist
-                var legacySettings = global::InventoryKamera.Properties.Settings.Default;
-
-                // Transfer all settings
-                Settings.ScanWeapons = legacySettings.ScanWeapons;
-                Settings.ScanArtifacts = legacySettings.ScanArtifacts;
-                Settings.ScanCharacters = legacySettings.ScanCharacters;
-                Settings.ScanCharDevItems = legacySettings.ScanCharDevItems;
-                Settings.ScanMaterials = legacySettings.ScanMaterials;
-                Settings.ScannerDelay = legacySettings.ScannerDelay;
-
-                Settings.MinimumWeaponRarity = legacySettings.MinimumWeaponRarity;
-                Settings.MinimumArtifactRarity = legacySettings.MinimumArtifactRarity;
-                Settings.MinimumWeaponLevel = legacySettings.MinimumWeaponLevel;
-                Settings.MinimumArtifactLevel = legacySettings.MinimumArtifactLevel;
-                Settings.SortByObtained = legacySettings.SortByObtained;
-                Settings.NumOfCharToScan = legacySettings.NumOfCharToScan;
-
-                Settings.OutputPath = legacySettings.OutputPath ?? string.Empty;
-                Settings.EquipWeapons = legacySettings.EquipWeapons;
-                Settings.EquipArtifacts = legacySettings.EquipArtifacts;
-
-                Settings.InventoryKey = legacySettings.InventoryKey;
-                Settings.CharacterKey = legacySettings.CharacterKey;
-                Settings.Slot1Key = legacySettings.Slot1Key;
-
-                Settings.TravelerName = legacySettings.TravelerName ?? string.Empty;
-                Settings.WandererName = legacySettings.WandererName ?? "Wanderer";
-                Settings.Manequin1Name = legacySettings.Manequin1Name ?? "Manequin1";
-                Settings.Manequin2Name = legacySettings.Manequin2Name ?? "Manequin2";
-
-                Settings.LogScreenshots = legacySettings.LogScreenshots;
-
-                Settings.LastUpdateCheck = legacySettings.LastUpdateCheck;
-                Settings.RemoteVersion = legacySettings.RemoteVersion ?? "0.0.0.0";
-
-                // Convert StringCollection to List<string> with proper error handling
-                if (legacySettings.Executables != null && legacySettings.Executables.Count > 0)
-                {
-                    var executables = new List<string>();
-                    foreach (string exe in legacySettings.Executables)
-                    {
-                        if (!string.IsNullOrEmpty(exe))
-                        {
-                            executables.Add(exe);
-                        }
-                    }
-                    Settings.Executables = executables;
-                }
-
-                // Mark migration as complete
-                Settings.UpgradeNeeded = false;
-                Save();
-
-                Logger.Info("Successfully migrated settings from legacy format");
-            }
-            catch (Exception ex)
-            {
-                Logger.Warn(ex, "Failed to migrate legacy settings, using defaults");
             }
         }
 
