@@ -334,9 +334,12 @@ namespace InventoryKamera
                         Bitmap copy = (Bitmap)rescaled.Clone();
                         GenshinProcesor.FilterColors(ref copy, rRange, bRange, gRange);
 
-                        for (int i = 0; i < copy.Width; i++)
-                            for (int j = 0; j < copy.Height * 0.25; j++)
-                                copy.SetPixel(i, j, Color.White);
+                        // White out the top 25% (item icon area) in one operation instead
+                        // of a per-pixel SetPixel loop, which was very slow in this hot path.
+                        using (var g = Graphics.FromImage(copy))
+                        {
+                            g.FillRectangle(Brushes.White, 0, 0, copy.Width, (int)(copy.Height * 0.25));
+                        }
 
                         Bitmap n = GenshinProcesor.ConvertToGrayscale(copy);
                         

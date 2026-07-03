@@ -739,22 +739,43 @@ namespace InventoryKamera
 
         internal static void SetGamma(double red, double green, double blue, ref Bitmap bitmap)
         {
-            Bitmap temp = bitmap;
-            Bitmap bmap = (Bitmap)temp.Clone();
-            Color c;
             byte[] redGamma = CreateGammaArray(red);
             byte[] greenGamma = CreateGammaArray(green);
             byte[] blueGamma = CreateGammaArray(blue);
-            for (int i = 0; i < bmap.Width; i++)
+
+            BitmapData data = bitmap.LockBits(
+                new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                ImageLockMode.ReadWrite,
+                bitmap.PixelFormat);
+
+            try
             {
-                for (int j = 0; j < bmap.Height; j++)
+                int bytesPerPixel = Image.GetPixelFormatSize(bitmap.PixelFormat) / 8;
+                int heightInPixels = data.Height;
+                int widthInBytes = data.Width * bytesPerPixel;
+                int stride = data.Stride;
+
+                unsafe
                 {
-                    c = bmap.GetPixel(i, j);
-                    bmap.SetPixel(i, j, Color.FromArgb(redGamma[c.R],
-                       greenGamma[c.G], blueGamma[c.B]));
+                    byte* ptrFirstPixel = (byte*)data.Scan0;
+
+                    for (int y = 0; y < heightInPixels; y++)
+                    {
+                        byte* currentLine = ptrFirstPixel + (y * stride);
+                        for (int x = 0; x < widthInBytes; x += bytesPerPixel)
+                        {
+                            // Windows bitmaps are stored in BGR order.
+                            currentLine[x] = blueGamma[currentLine[x]];
+                            currentLine[x + 1] = greenGamma[currentLine[x + 1]];
+                            currentLine[x + 2] = redGamma[currentLine[x + 2]];
+                        }
+                    }
                 }
             }
-            bitmap = (Bitmap)bmap.Clone();
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
         }
 
         private static byte[] CreateGammaArray(double color)
@@ -773,83 +794,49 @@ namespace InventoryKamera
             bitmap.InvertColors();
         }
 
-        internal static void SetColor(string colorFilterType, ref Bitmap bitmap)
-        {
-            Bitmap temp = bitmap;
-            Bitmap bmap = (Bitmap)temp.Clone();
-            Color c;
-            for (int i = 0; i < bmap.Width; i++)
-            {
-                for (int j = 0; j < bmap.Height; j++)
-                {
-                    c = bmap.GetPixel(i, j);
-                    int nPixelR = 0;
-                    int nPixelG = 0;
-                    int nPixelB = 0;
-                    if (colorFilterType == "red")
-                    {
-                        nPixelR = c.R;
-                        nPixelG = c.G - 255;
-                        nPixelB = c.B - 255;
-                    }
-                    else if (colorFilterType == "green")
-                    {
-                        nPixelR = c.R - 255;
-                        nPixelG = c.G;
-                        nPixelB = c.B - 255;
-                    }
-                    else if (colorFilterType == "blue")
-                    {
-                        nPixelR = c.R - 255;
-                        nPixelG = c.G - 255;
-                        nPixelB = c.B;
-                    }
-                    nPixelR = Math.Max(nPixelR, 0);
-                    nPixelR = Math.Min(255, nPixelR);
-
-                    nPixelG = Math.Max(nPixelG, 0);
-                    nPixelG = Math.Min(255, nPixelG);
-
-                    nPixelB = Math.Max(nPixelB, 0);
-                    nPixelB = Math.Min(255, nPixelB);
-
-                    bmap.SetPixel(i, j, Color.FromArgb((byte)nPixelR,
-                      (byte)nPixelG, (byte)nPixelB));
-                }
-            }
-            bitmap = (Bitmap)bmap.Clone();
-        }
-
         internal static void SetBrightness(int brightness, ref Bitmap bitmap)
         {
             if (brightness < -255) brightness = -255;
             if (brightness > 255) brightness = 255;
 
-            Bitmap temp = bitmap;
-            Bitmap bmap = (Bitmap)temp.Clone();
-            Color c;
-            for (int i = 0; i < bmap.Width; i++)
+            BitmapData data = bitmap.LockBits(
+                new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                ImageLockMode.ReadWrite,
+                bitmap.PixelFormat);
+
+            try
             {
-                for (int j = 0; j < bmap.Height; j++)
+                int bytesPerPixel = Image.GetPixelFormatSize(bitmap.PixelFormat) / 8;
+                int heightInPixels = data.Height;
+                int widthInBytes = data.Width * bytesPerPixel;
+                int stride = data.Stride;
+
+                unsafe
                 {
-                    c = bmap.GetPixel(i, j);
-                    int cR = c.R + brightness;
-                    int cG = c.G + brightness;
-                    int cB = c.B + brightness;
+                    byte* ptrFirstPixel = (byte*)data.Scan0;
 
-                    if (cR < 0) cR = 1;
-                    if (cR > 255) cR = 255;
-
-                    if (cG < 0) cG = 1;
-                    if (cG > 255) cG = 255;
-
-                    if (cB < 0) cB = 1;
-                    if (cB > 255) cB = 255;
-
-                    bmap.SetPixel(i, j, Color.FromArgb((byte)cR, (byte)cG, (byte)cB));
+                    for (int y = 0; y < heightInPixels; y++)
+                    {
+                        byte* currentLine = ptrFirstPixel + (y * stride);
+                        for (int x = 0; x < widthInBytes; x += bytesPerPixel)
+                        {
+                            // Apply to B, G, R channels. Clamp low values to 1 (not 0)
+                            // to preserve the original filter's behaviour.
+                            for (int channel = 0; channel < 3 && channel < bytesPerPixel; channel++)
+                            {
+                                int value = currentLine[x + channel] + brightness;
+                                if (value < 0) value = 1;
+                                if (value > 255) value = 255;
+                                currentLine[x + channel] = (byte)value;
+                            }
+                        }
+                    }
                 }
             }
-            bitmap = (Bitmap)bmap.Clone();
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
         }
 
         internal static void SetThreshold(int threshold, ref Bitmap bitmap)
