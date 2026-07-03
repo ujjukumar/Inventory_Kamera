@@ -19,30 +19,35 @@ public static class BitmapHelper
         long sumR = 0, sumG = 0, sumB = 0;
         long pixelCount = width * height;
 
-        unsafe
+        try
         {
-            byte* p = (byte*)srcData.Scan0;
-
-            for (int y = 0; y < height; y++)
+            unsafe
             {
-                for (int x = 0; x < width; x++)
+                byte* p = (byte*)srcData.Scan0;
+
+                for (int y = 0; y < height; y++)
                 {
-                    // 32bpp structure is generally: B, G, R, A
-                    int offset = (y * stride) + (x * 4);
+                    for (int x = 0; x < width; x++)
+                    {
+                        // 32bpp structure is generally: B, G, R, A
+                        int offset = (y * stride) + (x * 4);
 
-                    byte b = p[offset];
-                    byte g = p[offset + 1];
-                    byte r = p[offset + 2];
-                    // we ignore alpha (offset + 3) for color average usually
+                        byte b = p[offset];
+                        byte g = p[offset + 1];
+                        byte r = p[offset + 2];
+                        // we ignore alpha (offset + 3) for color average usually
 
-                    sumB += b;
-                    sumG += g;
-                    sumR += r;
+                        sumB += b;
+                        sumG += g;
+                        sumR += r;
+                    }
                 }
             }
         }
-
-        bm.UnlockBits(srcData);
+        finally
+        {
+            bm.UnlockBits(srcData);
+        }
 
         return Color.FromArgb(
             255,

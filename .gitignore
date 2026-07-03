@@ -60,3 +60,7 @@ GenshinData/*
 .vs/
 logging
 __ikverify/*
+
+# AI assistant memory artifacts
+GEMINI.md
+.copilot/

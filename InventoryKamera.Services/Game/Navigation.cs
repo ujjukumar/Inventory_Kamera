@@ -97,7 +97,7 @@ namespace InventoryKamera
 					Top: (int)( 695 / 720.0 * bmp.Height ),
 					Right: bmp.Width,
 					Bottom: bmp.Height);
-				gfxBmp.FillRectangle(new SolidBrush(Color.Black), uidRegion);
+				gfxBmp.FillRectangle(Brushes.Black, uidRegion);
 			}
 			return bmp;
 		}
