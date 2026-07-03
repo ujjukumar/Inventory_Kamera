@@ -151,7 +151,7 @@ namespace InventoryKamera
 
 		public override bool Equals(object obj)
 		{
-			return base.Equals(obj as Weapon);
+			return Equals(obj as Weapon);
 		}
 
 		public bool Equals(Weapon weapon)

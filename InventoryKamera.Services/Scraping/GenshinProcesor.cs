@@ -188,26 +188,32 @@ namespace InventoryKamera
             TesseractEngine e;
             while (!engines.TryTake(out e)) { Thread.Sleep(10); }
 
-            if (numbersOnly) e.SetVariable("tessedit_char_whitelist", "0123456789");
-
-            using var ms = new MemoryStream();
-            bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-            ms.Position = 0;
-
-            using var pix = Pix.LoadFromMemory(ms.ToArray());
-            using (var page = e.Process(pix, pageMode))
+            try
             {
-                using (var iter = page.GetIterator())
+                // Reset the whitelist every call. Engines are pooled, so a leftover
+                // "numbers only" whitelist from a prior call would otherwise corrupt
+                // subsequent text OCR on the same engine.
+                e.SetVariable("tessedit_char_whitelist", numbersOnly ? "0123456789" : "");
+
+                using var ms = new MemoryStream();
+                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                ms.Position = 0;
+
+                using var pix = Pix.LoadFromMemory(ms.ToArray());
+                using var page = e.Process(pix, pageMode);
+                using var iter = page.GetIterator();
+                iter.Begin();
+                do
                 {
-                    iter.Begin();
-                    do
-                    {
-                        text += iter.GetText(PageIteratorLevel.TextLine);
-                    }
-                    while (iter.Next(PageIteratorLevel.TextLine));
+                    text += iter.GetText(PageIteratorLevel.TextLine);
                 }
+                while (iter.Next(PageIteratorLevel.TextLine));
             }
-            engines.Add(e);
+            finally
+            {
+                // Always return the engine to the pool, even if OCR throws.
+                engines.Add(e);
+            }
 
             return text;
         }

@@ -87,7 +87,7 @@ namespace InventoryKamera
             }
 
             // Assign materials
-            if (genshinData.Inventory.AllMaterials.Count > 0) Materials = new Dictionary<string, int>();
+            Materials = new Dictionary<string, int>();
             genshinData.Inventory.AllMaterials.ToList().ForEach(material => Materials.Add(material.name, material.count));
         }
 

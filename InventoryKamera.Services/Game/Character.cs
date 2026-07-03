@@ -51,12 +51,14 @@ namespace InventoryKamera
         [JsonIgnore]
         public Dictionary<string, Artifact> Artifacts { get; internal set; }
 
+        private WeaponType? _weaponType;
+
         [JsonIgnore]
-        public WeaponType WeaponType { 
-            
-            get => GenshinProcesor.Characters[_nameKey.ToLower()]["WeaponType"].ToObject<WeaponType>();
-            
-            internal set { WeaponType = value; } 
+        public WeaponType WeaponType
+        {
+            get => _weaponType ?? GenshinProcesor.Characters[_nameKey.ToLower()]["WeaponType"].ToObject<WeaponType>();
+
+            internal set => _weaponType = value;
         }
 
         public Character()
