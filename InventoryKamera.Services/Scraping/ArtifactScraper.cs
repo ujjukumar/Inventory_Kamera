@@ -480,12 +480,19 @@ namespace InventoryKamera
             List<SubStat> substats = new List<SubStat>();
             List<SubStat> unactivated = new List<SubStat>();
             string text;
-            GenshinProcesor.SetBrightness(-30, ref bm);
-            GenshinProcesor.SetContrast(85, ref bm);
             bool hasUnactivated = false;
-            using (var n = GenshinProcesor.ConvertToGrayscale(bm))
+            try
             {
-                text = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.Auto).ToLower();
+                GenshinProcesor.SetBrightness(-30, ref bm);
+                GenshinProcesor.SetContrast(85, ref bm);
+                using (var n = GenshinProcesor.ConvertToGrayscale(bm))
+                {
+                    text = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.Auto).ToLower();
+                }
+            }
+            finally
+            {
+                bm.Dispose();
             }
 
             if(text.Contains("(unactivated)"))
@@ -505,7 +512,6 @@ namespace InventoryKamera
                 lines.RemoveRange(index, lines.Count - index);
             }
 
-            bm.Dispose();
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = Regex.Replace(lines[i], @"(?:^[^a-zA-Z]*)", string.Empty).Replace(" ", string.Empty);
@@ -517,6 +523,15 @@ namespace InventoryKamera
                     SubStat substat = new SubStat();
                     Regex re = new Regex(@"^(.*?)(\d+.*)");
                     var result = re.Match(line);
+
+                    // Without a stat/value split there is nothing usable on this line;
+                    // skip it rather than inserting a blank, invalid substat.
+                    if (!result.Success)
+                    {
+                        _logger.LogDebug("No stat/value match on substat line: {Line}", line);
+                        continue;
+                    }
+
                     var stat = Regex.Replace(result.Groups[1].Value, @"[^\w]", string.Empty);
                     var value = result.Groups[2].Value;
 
@@ -542,9 +557,10 @@ namespace InventoryKamera
                     if (string.IsNullOrWhiteSpace(substat.stat) || substat.value == -1)
                     {
                         _logger.LogDebug("Failed to parse stat from: {Line}", line);
+                        continue;
                     }
 
-                    substats.Insert(i, substat);
+                    substats.Add(substat);
                 }
             }
 

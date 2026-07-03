@@ -271,34 +271,45 @@ namespace InventoryKamera
 				using (Bitmap bm = Navigation.CaptureRegion(region))
 				{
 					Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-					GenshinProcesor.SetThreshold(110, ref n);
-					GenshinProcesor.SetInvert(ref n);
-
-					n = GenshinProcesor.ResizeImage(n, n.Width * 2, n.Height * 2);
-					string block = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.Auto).ToLower().Trim();
-					string line = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.SingleLine).ToLower().Trim();
-
-					// Characters with wrapped names will not have a slash
-					string nameAndElement = line.Contains("/") ? line : block;
-
-					if (nameAndElement.Contains("/"))
+					try
 					{
-						var split = nameAndElement.Split('/');
+						GenshinProcesor.SetThreshold(110, ref n);
+						GenshinProcesor.SetInvert(ref n);
 
-						// Search for element and character name in block
+						// ResizeImage returns a new bitmap; dispose the intermediate
+						// grayscale so it is not orphaned across retries.
+						Bitmap resized = GenshinProcesor.ResizeImage(n, n.Width * 2, n.Height * 2);
+						n.Dispose();
+						n = resized;
 
-						// Long name characters might look like
-						// <Element>   <First Name>
-						// /           <Last Name>
-						element = !split[0].Contains(" ") ? GenshinProcesor.FindElementByName(split[0].Trim()) : GenshinProcesor.FindElementByName(split[0].Split(' ')[0].Trim());
+						string block = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.Auto).ToLower().Trim();
+						string line = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.SingleLine).ToLower().Trim();
 
-						// Find character based on string after /
-						// Long name characters might search by their last name only but it'll still work.
-						name = GenshinProcesor.FindClosestCharacterName(Regex.Replace(split[1], @"[\W]", string.Empty));
+						// Characters with wrapped names will not have a slash
+						string nameAndElement = line.Contains("/") ? line : block;
 
-						if (!GenshinProcesor.CharacterMatchesElement(name, element)) { name = ""; element = ""; }
-                    }
-					n.Dispose();
+						if (nameAndElement.Contains("/"))
+						{
+							var split = nameAndElement.Split('/');
+
+							// Search for element and character name in block
+
+							// Long name characters might look like
+							// <Element>   <First Name>
+							// /           <Last Name>
+							element = !split[0].Contains(" ") ? GenshinProcesor.FindElementByName(split[0].Trim()) : GenshinProcesor.FindElementByName(split[0].Split(' ')[0].Trim());
+
+							// Find character based on string after /
+							// Long name characters might search by their last name only but it'll still work.
+							name = GenshinProcesor.FindClosestCharacterName(Regex.Replace(split[1], @"[\W]", string.Empty));
+
+							if (!GenshinProcesor.CharacterMatchesElement(name, element)) { name = ""; element = ""; }
+						}
+					}
+					finally
+					{
+						n.Dispose();
+					}
 
 					if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(element))
 					{
@@ -309,7 +320,10 @@ namespace InventoryKamera
 					else
                     {
                         _logger.LogDebug("Could not parse character name/element (Attempt {Attempt}/{Max}). Retrying...", attempts+1, maxAttempts);
-                        bm.Save($"./logging/characters/{bm.GetHashCode()}.png");
+                        // Only keep debug screenshots for the first few failures to avoid
+                        // flooding the log directory with up to maxAttempts images.
+                        if (attempts < 5)
+                            bm.Save($"./logging/characters/{bm.GetHashCode()}.png");
                     }
 				}
 				attempts++;
