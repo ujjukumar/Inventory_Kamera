@@ -1,4 +1,4 @@
-﻿using InventoryKamera.Helpers;
+using InventoryKamera.Helpers;
 using InventoryKamera.Properties;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
@@ -19,7 +19,7 @@ namespace InventoryKamera
 			NumOfCharToScan = Settings.NumOfCharToScan;
 		}
 
-		public void ScanCharacters(ref List<Character> Characters)
+		public void ScanCharacters(ref List<Character> Characters, CancellationToken cancellationToken = default)
 		{
 			int viewed = 0;
 			int counter = 0;
@@ -30,6 +30,8 @@ namespace InventoryKamera
 
 			while (true)
 			{
+				cancellationToken.ThrowIfCancellationRequested();
+
 				var character = ScanCharacter(first);
 				
 				// Skip mannequins/test characters

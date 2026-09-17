@@ -1,4 +1,4 @@
-﻿using InventoryKamera.Properties;
+using InventoryKamera.Properties;
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
@@ -333,6 +333,25 @@ namespace InventoryKamera
 
                 colCoords.RemoveAll(col => col > screenshot.Width * 0.65);
 
+                // If 7 columns are detected in a normal 8-column layout, extrapolate the missing edge column
+                if (colCoords.Count == 7)
+                {
+                    double avgSpacing = (colCoords[6] - colCoords[0]) / 6.0;
+                    int rightCol = (int)Math.Round(colCoords[6] + avgSpacing);
+                    int leftCol = (int)Math.Round(colCoords[0] - avgSpacing);
+
+                    if (rightCol <= screenshot.Width * 0.65)
+                    {
+                        colCoords.Add(rightCol);
+                        colCoords.Sort();
+                    }
+                    else if (leftCol >= screenshot.Width * 0.05)
+                    {
+                        colCoords.Add(leftCol);
+                        colCoords.Sort();
+                    }
+                }
+
                 foreach (var row in rowCoords)
                 {
                     foreach (var col in colCoords)
@@ -409,7 +428,7 @@ namespace InventoryKamera
                         itemCount = rows * cols;
                         if (itemCount != itemPerPage && !acceptLess)
                         {
-                            _logger.LogWarning("Unable to locate full page of weapons with weight {weight}", weight);
+                            _logger.LogWarning("Unable to locate full page of {Page} with weight {weight}", inventoryPage, weight);
                             _logger.LogWarning("Detected {Rows} rows and {Cols} columns of items", rows, cols);
 
                             // Generate rectangles

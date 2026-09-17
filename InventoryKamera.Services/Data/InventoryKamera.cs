@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using InventoryKamera.Properties;
 using System;
@@ -178,7 +178,7 @@ namespace InventoryKamera
 				try
 				{
 					_cancellationToken.ThrowIfCancellationRequested();
-                    weaponScraper.ScanWeapons();
+                    weaponScraper.ScanWeapons(cancellationToken: _cancellationToken);
 				}
 				catch (FormatException ex) { UserInterface.AddError(ex.Message); }
 				catch (OperationCanceledException) { throw; }
@@ -202,7 +202,7 @@ namespace InventoryKamera
 				try
 				{
 					_cancellationToken.ThrowIfCancellationRequested();
-					artifactScraper.ScanArtifacts();
+					artifactScraper.ScanArtifacts(cancellationToken: _cancellationToken);
 				}
 				catch (FormatException ex) { UserInterface.AddError(ex.Message); }
 				catch (OperationCanceledException) { throw; }
@@ -226,7 +226,7 @@ namespace InventoryKamera
 				try
 				{
 					_cancellationToken.ThrowIfCancellationRequested();
-					characterScraper.ScanCharacters(ref Characters);
+					characterScraper.ScanCharacters(ref Characters, _cancellationToken);
 				}
 				catch (OperationCanceledException) { throw; }
 				catch (Exception ex)
@@ -289,7 +289,7 @@ namespace InventoryKamera
 				{
 					_cancellationToken.ThrowIfCancellationRequested();
 					materialScraper.SetInventoryPage(InventoryPage.Materials);
-					materialScraper.Scan_Materials(ref Inventory);
+					materialScraper.Scan_Materials(ref Inventory, _cancellationToken);
 				}
 				catch (FormatException ex) { UserInterface.AddError(ex.Message); }
 				catch (OperationCanceledException) { throw; }

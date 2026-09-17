@@ -98,8 +98,6 @@ namespace InventoryKamera
                 _cancellationTokenSource?.Cancel();
 
                 UserInterface.SetProgramStatus("Scan Stopped");
-
-                Navigation.Reset();
             }
         }
 

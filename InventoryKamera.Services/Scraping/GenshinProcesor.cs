@@ -15,7 +15,10 @@ namespace InventoryKamera
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
 
-        private const int numEngines = 8;
+        // Each TesseractEngine loads its own full copy of the LSTM model into native
+        // memory (~40-60 MB). The scanner only runs 2-3 OCR worker threads, so a fixed
+        // pool of 8 kept 5-6 engines resident for nothing. Right-size it to the machine.
+        private static readonly int numEngines = Math.Clamp(Environment.ProcessorCount, 2, 4);
 
         private static readonly string tesseractDatapath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TesseractData");
         private static readonly string tesseractLanguage = "genshin_fast_09_04_21";

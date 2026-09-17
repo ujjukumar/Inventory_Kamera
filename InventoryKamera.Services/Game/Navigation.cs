@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -52,18 +52,12 @@ namespace InventoryKamera
 					ClientToScreen(handle, ref WindowPosition);
 					GetClientRect(handle, ref WindowSize);
 					
-					try
-					{
-						AspectRatio = GetAspectRatio();
-					}
-					catch (DivideByZeroException)
+					if (WindowSize.Width <= 0 || WindowSize.Height <= 0)
 					{
 						throw new InvalidOperationException("Genshin window could not be focused. Please make sure the game is visible.");
 					}
-					catch (Exception)
-					{
-						throw;
-					}
+
+					AspectRatio = GetAspectRatio();
 
 					Debug.WriteLine("Found {0}.exe", processName);
 					Debug.WriteLine("Window location ({0}x{1}): x={2}, y={3}", WindowSize.Width, WindowSize.Height, WindowPosition.Left, WindowPosition.Top);
@@ -258,8 +252,12 @@ namespace InventoryKamera
 		{
 			if (!AspectRatio.IsEmpty) return AspectRatio;
 
-			if (WindowSize.Width == 0) throw new DivideByZeroException("Genshin's window width cannot be 0");
-			if (WindowSize.Height == 0) throw new DivideByZeroException("Genshin's window height cannot be 0");
+			if (WindowSize.Width <= 0 || WindowSize.Height <= 0)
+			{
+				Debug.WriteLine("Warning: Attempted to get aspect ratio with zero or uninitialized window size.");
+				return new Size(16, 9);
+			}
+
 			int x = WindowSize.Width/GCD(WindowSize.Width, WindowSize.Height);
 			int y = WindowSize.Height/GCD(WindowSize.Width, WindowSize.Height);
 			var size = new Size(x, y);

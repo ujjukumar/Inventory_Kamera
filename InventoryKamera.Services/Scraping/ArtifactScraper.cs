@@ -1,4 +1,4 @@
-﻿using InventoryKamera.Helpers;
+using InventoryKamera.Helpers;
 using System.Text.RegularExpressions;
 using static InventoryKamera.Artifact;
 using Microsoft.Extensions.Logging;
@@ -14,7 +14,7 @@ namespace InventoryKamera
             SortByObtained = Settings.SortByObtained;
         }
 
-        public void ScanArtifacts(int count = 0)
+        public void ScanArtifacts(int count = 0, CancellationToken cancellationToken = default)
         {
             // Get Max artifacts from screen
             int artifactCount = count == 0 ? ScanItemCount() : count;
@@ -22,6 +22,8 @@ namespace InventoryKamera
 
             SetSort();
             ClearFilters();
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             var (rectangles, cols, rows) = GetPageOfItems(page);
             int fullPage = cols * rows;
@@ -36,54 +38,11 @@ namespace InventoryKamera
 
             _logger.LogInformation("Found {Count} for artifact count.", artifactCount);
 
-
-
-            //if (SortByLevel)
-            //{
-            //	Logger.Debug("Sorting by level to optimize total scan time");
-            //	// Check if sorted by level
-            //	// If not, sort by level
-            //	if (CurrentSortingMethod() != "level")
-            //	{
-            //		Logger.Debug("Not already sorting by level...");
-            //		Navigation.SetCursor(
-            //			X: (int)(230 / 1280.0 * Navigation.GetWidth()),
-            //			Y: (int)(680 / 720.0 * Navigation.GetHeight()));
-            //		Navigation.Click();
-            //		Navigation.Wait();
-            //		Navigation.SetCursor(
-            //			X: (int)(250 / 1280.0 * Navigation.GetWidth()),
-            //			Y: (int)(615 / 720.0 * Navigation.GetHeight()));
-            //		Navigation.Click();
-            //		Navigation.Wait();
-            //	}
-            //	Logger.Debug("Inventory is sorted by level.");
-            //}
-            //else
-            //{
-            //	Logger.Debug("Sorting by quality to scan all artifacts matching quality filter.");
-            //	// Check if sorted by quality
-            //	if (CurrentSortingMethod() != "quality")
-            //	{
-            //		Logger.Debug("Not already sorting by quality...");
-            //		// If not, sort by quality
-            //		Navigation.SetCursor(
-            //			X: (int)(230 / 1280.0 * Navigation.GetWidth()),
-            //			Y: (int)(680 / 720.0 * Navigation.GetHeight()));
-            //		Navigation.Click();
-            //		Navigation.Wait();
-            //		Navigation.SetCursor(
-            //			X: (int)(250 / 1280.0 * Navigation.GetWidth()),
-            //			Y: (int)(645 / 720.0 * Navigation.GetHeight()));
-            //		Navigation.Click();
-            //		Navigation.Wait();
-            //	}
-            //	Logger.Debug("Inventory is sorted by quality");
-            //}
-
             // Go through artifact list
             while (cardsQueued < artifactCount)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 _logger.LogDebug("Scanning artifact page {Page}", page);
                 _logger.LogDebug("Located {Count} possible item locations on page.", rectangles.Count);
 
@@ -92,6 +51,8 @@ namespace InventoryKamera
                 // items are scrolled to, offset the index of rectangle to start clicking from
                 for (int i = cardsRemaining < fullPage ? ( rows - ( totalRows - rowsQueued ) ) * cols : 0; i < rectangles.Count; i++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     Rectangle item = rectangles[i];
                     Navigation.SetCursor(item.Center().X, item.Center().Y);
                     Navigation.Click();
@@ -112,6 +73,12 @@ namespace InventoryKamera
 
                 rowsQueued += rows;
 
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Position cursor safely in the middle of the grid to ensure scroll events target the inventory list
+                Navigation.SetCursor((int)(Navigation.GetWidth() * 0.35), (int)(Navigation.GetHeight() * 0.5));
+                Navigation.Wait(50);
+
                 // Page done, now scroll
                 // If the number of remaining scans is shorter than a full page then
                 // only scroll a few rows
@@ -120,17 +87,16 @@ namespace InventoryKamera
                     for (int i = 0; i < 10 * ( totalRows - rowsQueued ) - 1; i++)
                     {
                         Navigation.sim.Mouse.VerticalScroll(-1);
-                        Navigation.Wait(1);
+                        Navigation.SystemWait(Navigation.Speed.InventoryScroll);
                     }
-                    Navigation.SystemWait(Navigation.Speed.Fast);
+                    Navigation.SystemWait(Navigation.Speed.Normal);
                 }
                 else
                 {
-                    
                     for (int i = 0; i < 10 * rows - 1; i++)
                     {
                         Navigation.sim.Mouse.VerticalScroll(-1);
-                        Navigation.Wait(1);
+                        Navigation.SystemWait(Navigation.Speed.InventoryScroll);
                     }
                     // Scroll back one to keep it from getting too crazy
                     var rollbackPeriod = Navigation.IsNormal ? 9 : 3;
@@ -138,10 +104,11 @@ namespace InventoryKamera
                     {
                         _logger.LogDebug("Scrolled back one");
                         Navigation.sim.Mouse.VerticalScroll(1);
-                        Navigation.Wait(1);
+                        Navigation.SystemWait(Navigation.Speed.InventoryScroll);
                     }
-                    Navigation.SystemWait(Navigation.Speed.Fast);
+                    Navigation.SystemWait(Navigation.Speed.Normal);
                 }
+                cancellationToken.ThrowIfCancellationRequested();
                 ++page;
                 (rectangles, cols, rows) = GetPageOfItems(page, acceptLess: totalRows - rowsQueued <= fullPage);
             }

@@ -1,4 +1,4 @@
-﻿using System.Runtime.Serialization;
+using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
 using static InventoryKamera.Helpers.BitmapHelper;
 
@@ -54,7 +54,7 @@ namespace InventoryKamera
 			if (materialPages.Contains(page)) inventoryPage = page;
 		}
 
-		public void Scan_Materials(ref Inventory inventory)
+		public void Scan_Materials(ref Inventory inventory, CancellationToken cancellationToken = default)
 		{
 			if (!inventory.Materials.Contains(new Material("Mora", 0)))
 			{
@@ -72,6 +72,8 @@ namespace InventoryKamera
 			// Keep scanning while not repeating any items names
 			while (true)
 			{
+				cancellationToken.ThrowIfCancellationRequested();
+
 				int rows, cols;
 				// Find all items on the screen
 				(rectangles, cols, rows) = GetPageOfItems(page, acceptLess: true);
@@ -86,6 +88,8 @@ namespace InventoryKamera
 
 				foreach (var rectangle in r)
 				{
+					cancellationToken.ThrowIfCancellationRequested();
+
 					// Select Material
 					Navigation.SetCursor(rectangle.Center().X, rectangle.Center().Y);
 					Navigation.Click();
