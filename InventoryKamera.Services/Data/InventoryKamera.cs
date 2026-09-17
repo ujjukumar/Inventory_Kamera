@@ -426,6 +426,15 @@ namespace InventoryKamera
 
 				if (workerQueue.TryDequeue(out OCRImageCollection imageCollection))
 				{
+					try
+					{
+					// If a scan was stopped, skip any in-flight item rather than doing
+					// window-dependent work against a game window that may be gone.
+					if (b_threadCancel)
+					{
+						workerQueue.Clear();
+						break;
+					}
 					switch (imageCollection.Type)
 					{
 						case "weapon":
@@ -574,6 +583,15 @@ namespace InventoryKamera
 						default:
 							_logger.LogError("Unknown Image type for Image Processor: {Type}", imageCollection.Type);
 							break;
+					}
+					}
+					catch (Exception ex)
+					{
+						// A single item's processing must never crash the whole worker thread
+						// (and with it the app). This commonly fires when a scan is stopped and the
+						// game window becomes unavailable (e.g. DivideByZeroException from
+						// Navigation.GetAspectRatio when the window width is 0). Log and continue.
+						_logger.LogError(ex, "Failed to process {Type} image #{Id}; skipping.", imageCollection.Type, imageCollection.Id);
 					}
 				}
 				else

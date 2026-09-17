@@ -178,13 +178,28 @@ namespace InventoryKamera
                 Color sortObtainedTrue = Color.FromArgb(255, 224, 198, 147);
                 Color sortObtainedStatus = x.GetPixel((int)x.Width / 2,(int) x.Height / 2);
                 var sortObtained = GenshinProcesor.CompareColors(sortObtainedTrue, sortObtainedStatus);
-                if( SortByObtained > 0 ^ sortObtained)
+                bool willToggle = SortByObtained > 0 ^ sortObtained;
+
+                // Diagnostic logging for the "sort by obtained" detection. If the scanner is
+                // wrongly clicking this button, these lines reveal whether the hardcoded sample
+                // region/color no longer matches the current resolution or game UI.
+                _logger.LogInformation(
+                    "SetSort diagnostics: resolution {W}x{H} (IsNormal={IsNormal}), SortByObtained setting={Setting}, " +
+                    "sampled pixel=ARGB({A},{R},{G},{B}) expected=ARGB(255,224,198,147), detectedButtonOn={Detected}, willToggle={Toggle}",
+                    Navigation.GetWidth(), Navigation.GetHeight(), Navigation.IsNormal, SortByObtained,
+                    sortObtainedStatus.A, sortObtainedStatus.R, sortObtainedStatus.G, sortObtainedStatus.B,
+                    sortObtained, willToggle);
+                SaveInventoryBitmap(x, $"SetSort_Region_{Navigation.GetWidth()}x{Navigation.GetHeight()}.png");
+
+                if( willToggle )
                 {
+                    _logger.LogInformation("SetSort toggling 'sort by obtained' button (setting requires {Setting}, detected {Detected}).", SortByObtained > 0, sortObtained);
                     Navigation.ChangeArtifactSortObtained();
                 }
                 Navigation.SystemWait(Navigation.Speed.Slow);
             }
         }
+
 
         public Task QueueScan(int id)
         {

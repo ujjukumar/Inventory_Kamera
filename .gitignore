@@ -59,3 +59,7 @@ inventorylists/*
 GenshinData/*
 .vs/
 logging
+
+# Disposable verification/scratch harnesses (see docs/Migration.md)
+__ikverify/
+

@@ -415,14 +415,14 @@ namespace InventoryKamera
 
                                 foreach (var element in playerElements)
                                 {
-                                    var elementSkill = skills.FirstOrDefault(entry => entry["skillIcon"].ToString().Contains($"Player{element.Key}") && !entry.ContainsKey("costElemType"));
-                                    
+                                    var elementSkill = skills.FirstOrDefault(entry => entry.Value<string>("skillIcon")?.Contains($"Player{element.Key}") == true && !entry.ContainsKey("costElemType"));
+
 
                                     if (elementSkill == null) continue;
 
                                     skill = Mappings[elementSkill["nameTextMapHash"].ToString()].ToString();
 
-                                    const3Description = talents.Where(entry => entry["openConfig"].ToString().Contains($"Player_{element.Key}")).ElementAt(2)["descTextMapHash"].ToString();
+                                    const3Description = talents.Where(entry => entry.Value<string>("openConfig")?.Contains($"Player_{element.Key}") == true).ElementAt(2)["descTextMapHash"].ToString();
                                     const3Description = Mappings[const3Description].ToString();
 
                                     if (const3Description.Contains(skill))
@@ -438,7 +438,7 @@ namespace InventoryKamera
                             }
                             else // Any other character that isn't traveler
                             {
-                                var skillEntry = skills.FirstOrDefault(entry => entry["skillIcon"].ToString().Contains($"Skill_S_{name}"));
+                                var skillEntry = skills.FirstOrDefault(entry => entry.Value<string>("skillIcon")?.Contains($"Skill_S_{name}") == true);
                                 if (skillEntry == null)
                                 {
                                     Logger.Warn("Skill not found for character {0}, skipping constellation order", name);
@@ -456,7 +456,7 @@ namespace InventoryKamera
                                 var constellationOrder = new JArray();
 
                                 // The skill/burst name is always mentioned in the constellation's description so we'll check for it
-                                var talentList = talents.Where(entry => entry["icon"].ToString().Contains(name)).ToList();
+                                var talentList = talents.Where(entry => entry.Value<string>("icon")?.Contains(name) == true).ToList();
                                 
                                 if (talentList.Count < 3)
                                 {
