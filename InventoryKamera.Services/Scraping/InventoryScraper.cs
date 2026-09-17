@@ -249,15 +249,14 @@ namespace InventoryKamera
                 MinWidth = (int)(iconMinWidth * (1 - weight)),
                 MaxWidth = (int)(iconMaxWidth * (1 + weight)),
             })
+            // Work on a private copy. ProcessScreenshot is called repeatedly across retry
+            // iterations with the SAME source bitmap, so it must not dispose the image it is
+            // handed - doing so caused an "ArgumentException: Parameter is not valid" on retries.
+            using (Bitmap working = screenshot.ApplyKirschFilter())
             {
-                // Image pre-processing
-                // Returns a NEW bitmap, so we must capture it and dispose the old one to avoid memory leaks
-                Bitmap temp = screenshot.ApplyKirschFilter();
-                screenshot.Dispose(); // Release the original image
-                screenshot = temp;
-                screenshot.ApplyThreshold(75); // Convert to black and white only based on pixel intensity			
+                working.ApplyThreshold(75); // Convert to black and white only based on pixel intensity			
 
-                blobCounter.ProcessImage(screenshot);
+                blobCounter.ProcessImage(working);
                 // Note: Processing won't always detect all item rectangles on screen. Since the
                 // background isn't a solid color it's a bit trickier to filter out.
 

@@ -44,3 +44,34 @@ game version as `6.4` even though the downloaded data was `6.7`:
   remote version is now resolved on every update (forced or not), keeping the
   previous version if the lookup fails.
 
+## Second upstream sync — `taiwenlee/master` up to v1.4.5
+
+Compared the branch against the parent repo `taiwenlee/Inventory_Kamera` (added as
+the `upstream` remote). The histories share no common ancestor because this branch
+is a rewritten/modernized layout, but everything up to `00254f7` (v1.4.4) was
+already ported in the previous sync. Only two upstream commits after that point
+carried new content, both ported below.
+
+### Ported
+
+| SHA | Summary | How it was ported |
+| --- | --- | --- |
+| `480222b` | Fix: Update Lookup Bug | Made character constellation logic null-safe on newer game data by switching `entry["skillIcon"/"openConfig"/"icon"].ToString()` to `entry.Value<string>(...)?.Contains(...) == true` in `UpdateCharacters()`, preventing `NullReferenceException` when those fields are missing. The graceful skip for characters without skill data was already present from the earlier `43c1612` port. |
+| `427b868` | Bump assembly version to 1.4.5 | Applied via SDK-style `.csproj` properties (`Version`/`AssemblyVersion`/`FileVersion` = 1.4.5) in `InventoryKamera.WinForms.csproj` and `InventoryKamera.Services.csproj`. |
+
+## Bug fix — artifact scan crash on partial last page
+
+`ArtifactScraper` crashed with `ArgumentException: Parameter is not valid` at
+`Image.get_Width()` (`InventoryScraper.ProcessScreenshot`) whenever the final
+inventory page was not full (e.g. 31 artifacts detected as 4×7 instead of 32).
+`ProcessScreenshot` disposed the `Bitmap` it was handed
+(`screenshot.Dispose()` after `ApplyKirschFilter()`), but `GetPageOfItems` calls it
+**repeatedly with the same bitmap** inside a retry loop. On the retry the bitmap was
+already disposed, so reading its dimensions threw. Fixed by having
+`ProcessScreenshot` run its Kirsch/threshold pre-processing on a private disposable
+copy (`using (Bitmap working = screenshot.ApplyKirschFilter())`) and leaving the
+caller-owned `screenshot` intact. This also removes a latent double-dispose, since
+`GetPageOfItems` already disposes `processedScreenshot` after the loop.
+
+
+
