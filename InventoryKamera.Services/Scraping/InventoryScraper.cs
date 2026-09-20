@@ -42,8 +42,14 @@ namespace InventoryKamera
         }
     }
 
-    public class InventoryScraper
+    public partial class InventoryScraper
     {
+        [GeneratedRegex(@"[\W]")]
+        private static partial Regex NonWordRegex();
+
+        [GeneratedRegex(@"[^0-9/]")]
+        private static partial Regex NonDigitOrSlashRegex();
+
         protected readonly ILogger _logger;
         protected AppSettings Settings => SettingsService.Instance.Settings;
 
@@ -101,14 +107,13 @@ namespace InventoryKamera
         /// <returns>String parsed from nameplate</returns>
         internal string ScanItemName(Bitmap nameplate)
         {
-            GenshinProcesor.SetGamma(0.2, 0.2, 0.2, ref nameplate);
-            Bitmap n = GenshinProcesor.ConvertToGrayscale(nameplate);
-            GenshinProcesor.SetInvert(ref n);
+            using Bitmap copy = (Bitmap)nameplate.Clone();
+            GenshinProcesor.SetGamma(0.2, 0.2, 0.2, copy);
+            using Bitmap n = GenshinProcesor.ConvertToGrayscale(copy);
+            GenshinProcesor.SetInvert(n);
 
             // Analyze
-            string text = Regex.Replace(GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.SingleBlock).ToLower(), @"[\W]", string.Empty);
-
-            n.Dispose();
+            string text = NonWordRegex().Replace(GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.SingleBlock).ToLower(), string.Empty);
 
             return text;
         }
@@ -135,40 +140,37 @@ namespace InventoryKamera
             {
                 UserInterface.SetNavigation_Image(countBitmap);
 
-                Bitmap n = GenshinProcesor.ConvertToGrayscale(countBitmap);
-                GenshinProcesor.SetContrast(60.0, ref n);
-                GenshinProcesor.SetInvert(ref n);
+                using Bitmap n = GenshinProcesor.ConvertToGrayscale(countBitmap);
+                GenshinProcesor.SetContrast(60.0, n);
+                GenshinProcesor.SetInvert(n);
 
                 string text = GenshinProcesor.AnalyzeText(n).Trim();
-                n.Dispose();
 
                 // Remove any non-numeric and '/' characters
-                text = Regex.Replace(text, @"[^0-9/]", string.Empty);
+                text = NonDigitOrSlashRegex().Replace(text, string.Empty);
 
                 if (string.IsNullOrWhiteSpace(text) || Settings.LogScreenshots)
                 {
                     SaveInventoryBitmap(countBitmap, "ItemCount.png");
-                    SaveInventoryBitmap(Navigation.CaptureWindow(), $"InventoryWindow_{Navigation.GetWidth()}x{Navigation.GetHeight()}.png");
+                    using (var win = Navigation.CaptureWindow())
+                    {
+                        SaveInventoryBitmap(win, $"InventoryWindow_{Navigation.GetWidth()}x{Navigation.GetHeight()}.png");
+                    }
                     if (string.IsNullOrWhiteSpace(text)) throw new FormatException($"Unable to locate {inventoryPage} item count.");
                 }
 
                 int count;
-                string pageCapacity;
-                switch (inventoryPage)
+                string pageCapacity = inventoryPage switch
                 {
-                    case InventoryPage.Artifacts:
-                        pageCapacity = "1800";
-                        break;
-                    default:
-                        pageCapacity = "2000";
-                        break;
-                }
+                    InventoryPage.Artifacts => "1800",
+                    _ => "2000"
+                };
 
-                if (Regex.IsMatch(text, "/")) // Check for slash
+                if (text.Contains('/')) // Check for slash
                 {
                     count = int.Parse(text.Split('/')[0]);
                 }
-                else if (Regex.Matches(text, pageCapacity).Count == 1) // Remove the inventory capacity from number
+                else if (text.Contains(pageCapacity) && text.IndexOf(pageCapacity) == text.LastIndexOf(pageCapacity)) // Remove the inventory capacity from number
                 {
                     text = text.Replace(pageCapacity, string.Empty);
                     count = int.Parse(text);
@@ -213,8 +215,8 @@ namespace InventoryKamera
             }
 
             using (var bm = Navigation.CaptureRegion(region))
+            using (var g = GenshinProcesor.ConvertToGrayscale(bm))
             {
-                var g = GenshinProcesor.ConvertToGrayscale(bm);
                 var mode = GenshinProcesor.AnalyzeText(g).Trim().ToLower();
                 return mode.Contains("level") ? "level" : mode.Contains("quality") ? "quality" : null;
             }
@@ -399,8 +401,8 @@ namespace InventoryKamera
         {
             // Screenshot of inventory
             using (Bitmap screenshot = Navigation.CaptureWindow())
+            using (Bitmap processedScreenshot = new Bitmap(screenshot))
             {
-                Bitmap processedScreenshot = new Bitmap(screenshot);
                 using (Graphics g = Graphics.FromImage(processedScreenshot))
                 using (var brush = new SolidBrush(Color.Black))
                 {
@@ -462,7 +464,6 @@ namespace InventoryKamera
 
                         SaveInventoryBitmap(screenshot, $"{inventoryPage}Inventory{pageNum}_{cols}x{rows} - weight {weight}.png");
                     }
-                    processedScreenshot.Dispose();
 
                     if (rectangles == null)
                     {
@@ -482,7 +483,6 @@ namespace InventoryKamera
                 }
                 catch (Exception)
                 {
-                    processedScreenshot.Dispose();
                     SaveInventoryBitmap(screenshot, $"{inventoryPage}Inventory.png");
                     throw;
                 }

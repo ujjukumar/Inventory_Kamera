@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
@@ -11,7 +11,7 @@ using static InventoryKamera.Helpers.BitmapHelper;
 
 namespace InventoryKamera
 {
-    public static class GenshinProcesor
+    public static partial class GenshinProcesor
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
 
@@ -82,6 +82,9 @@ namespace InventoryKamera
 
         public static Dictionary<string, JObject> Characters, Artifacts;
 
+        internal static readonly Dictionary<string, string> ArtifactSlotToSetMap = new(StringComparer.OrdinalIgnoreCase);
+        internal static readonly List<(string NormalizedName, string GoodSet)> ArtifactSlotCandidates = new();
+
         static GenshinProcesor()
         {
             InitEngines();
@@ -108,6 +111,28 @@ namespace InventoryKamera
             DevItems = listManager.LoadDevItems();
             Materials = listManager.LoadMaterials();
 
+            ArtifactSlotToSetMap.Clear();
+            ArtifactSlotCandidates.Clear();
+            if (Artifacts != null)
+            {
+                foreach (var artifactSet in Artifacts)
+                {
+                    string currentSet = artifactSet.Value["GOOD"]?.ToString() ?? "";
+                    var artifactsToken = artifactSet.Value["artifacts"];
+                    if (artifactsToken != null)
+                    {
+                        foreach (var slot in artifactsToken.Values())
+                        {
+                            string artifactName = slot["normalizedName"]?.ToString() ?? "";
+                            if (!string.IsNullOrEmpty(artifactName))
+                            {
+                                ArtifactSlotToSetMap[artifactName] = currentSet;
+                                ArtifactSlotCandidates.Add((artifactName, currentSet));
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         internal static void UpdateCharacterName(string target, string name)
@@ -225,19 +250,31 @@ namespace InventoryKamera
                 // subsequent text OCR on the same engine.
                 e.SetVariable("tessedit_char_whitelist", numbersOnly ? "0123456789" : "");
 
-                using var ms = new MemoryStream();
-                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                ms.Position = 0;
-
-                using var pix = Pix.LoadFromMemory(ms.ToArray());
-                using var page = e.Process(pix, pageMode);
-                using var iter = page.GetIterator();
-                iter.Begin();
-                do
+                Pix pix;
+                try
                 {
-                    text += iter.GetText(PageIteratorLevel.TextLine);
+                    pix = ConvertToPix(bitmap);
                 }
-                while (iter.Next(PageIteratorLevel.TextLine));
+                catch (Exception ex)
+                {
+                    Logger.Warn(ex, "Direct Pix conversion failed; falling back to memory stream.");
+                    using var ms = new MemoryStream();
+                    bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    ms.Position = 0;
+                    pix = Pix.LoadFromMemory(ms.ToArray());
+                }
+
+                using (pix)
+                {
+                    using var page = e.Process(pix, pageMode);
+                    using var iter = page.GetIterator();
+                    iter.Begin();
+                    do
+                    {
+                        text += iter.GetText(PageIteratorLevel.TextLine);
+                    }
+                    while (iter.Next(PageIteratorLevel.TextLine));
+                }
             }
             finally
             {
@@ -336,26 +373,25 @@ namespace InventoryKamera
         internal static string FindClosestArtifactSetFromArtifactName(string name, int minConfidence = 90)
         {
             if (string.IsNullOrWhiteSpace(name)) return "";
+
+            // Fast path: O(1) direct dictionary lookup
+            if (ArtifactSlotToSetMap.TryGetValue(name, out string directMatch))
+            {
+                return directMatch;
+            }
+
+            // Fallback: Fuzzy distance matching across pre-cached candidate list
             string closestMatch = null;
             double highestConfidence = 0;
 
-
-            foreach (var artifactSet in Artifacts)
+            foreach (var (artifactName, currentSet) in ArtifactSlotCandidates)
             {
-                string currentSet = artifactSet.Value["GOOD"].ToString();
+                double artifactSimilarity = StringSimilarity(name, artifactName);
 
-                foreach (var slot in artifactSet.Value["artifacts"].Values())
+                if (artifactSimilarity > minConfidence && artifactSimilarity > highestConfidence)
                 {
-                    string artifactName = slot["normalizedName"].ToString();
-                    if (artifactName == name) return currentSet;
-
-                    double artifactSimilarity = StringSimilarity(name, artifactName);
-
-                    if ( artifactSimilarity > minConfidence && artifactSimilarity > highestConfidence)
-                    {
-                        highestConfidence = artifactSimilarity;
-                        closestMatch = currentSet;
-                    }
+                    highestConfidence = artifactSimilarity;
+                    closestMatch = currentSet;
                 }
             }
 
@@ -392,13 +428,22 @@ namespace InventoryKamera
             if (string.IsNullOrWhiteSpace(source)) return "";
             if (targets.TryGetValue(source, out string value)) return value;
 
-            HashSet<string> keys = new HashSet<string>(targets.Keys);
+            string singleMatch = null;
+            int matchCount = 0;
+            foreach (var key in targets.Keys)
+            {
+                if (key.Contains(source, StringComparison.OrdinalIgnoreCase))
+                {
+                    singleMatch = targets[key];
+                    matchCount++;
+                    if (matchCount > 1) break;
+                }
+            }
+            if (matchCount == 1) return singleMatch;
 
-            if (keys.Where(key => key.Contains(source)).Count() == 1) return targets[keys.First(key => key.Contains(source))];
+            source = FindClosestInCollection(source, targets.Keys, minConfidence);
 
-            source = FindClosestInList(source, keys, minConfidence);
-
-            return targets.TryGetValue(source, out value) ? value : source;
+            return targets.TryGetValue(source ?? "", out value) ? value : source;
         }
 
         private static string FindClosestInDict(string source, Dictionary<string, JObject> targets, int minConfidence)
@@ -406,18 +451,26 @@ namespace InventoryKamera
             if (string.IsNullOrWhiteSpace(source)) return "";
             if (targets.TryGetValue(source, out JObject value)) return (string)value["GOOD"];
 
-            HashSet<string> keys = new HashSet<string>(targets.Keys);
+            string singleMatch = null;
+            int matchCount = 0;
+            foreach (var key in targets.Keys)
+            {
+                if (key.Contains(source, StringComparison.OrdinalIgnoreCase))
+                {
+                    singleMatch = (string)targets[key]["GOOD"];
+                    matchCount++;
+                    if (matchCount > 1) break;
+                }
+            }
+            if (matchCount == 1) return singleMatch;
 
-            if (keys.Where(key => key.Contains(source)).Count() == 1) return (string)targets[keys.First(key => key.Contains(source))]["GOOD"];
+            source = FindClosestInCollection(source, targets.Keys, minConfidence);
 
-            source = FindClosestInList(source, keys, minConfidence);
-
-            return targets.TryGetValue(source, out value) ? (string)value["GOOD"] : source;
+            return targets.TryGetValue(source ?? "", out value) ? (string)value["GOOD"] : source;
         }
 
-        private static string FindClosestInList(string source, HashSet<string> targets, double minConfidence)
+        private static string FindClosestInCollection(string source, IEnumerable<string> targets, double minConfidence)
         {
-            if (targets.Contains(source)) return source;
             if (string.IsNullOrWhiteSpace(source)) return null;
 
             string mostSimilarString = "";
@@ -425,6 +478,8 @@ namespace InventoryKamera
 
             foreach (var target in targets)
             {
+                if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase)) return target;
+
                 double similarityValue = StringSimilarity(source, target);
 
                 if (similarityValue > minConfidence && similarityValue > mostSimilarValue)
@@ -434,7 +489,7 @@ namespace InventoryKamera
                 }
             }
 
-            if (!string.IsNullOrWhiteSpace(mostSimilarString) && !targets.Contains("critrate"))	// Only print this statement when not looking to match for a closest stat
+            if (!string.IsNullOrWhiteSpace(mostSimilarString) && !source.Equals("critrate", StringComparison.OrdinalIgnoreCase))
                 Logger.Debug("Most similar string found for {0} as {1} ({2}%)", source, mostSimilarString, mostSimilarValue);
 
             return mostSimilarString;
@@ -518,32 +573,34 @@ namespace InventoryKamera
         {
             int m = s1.Length;
             int n = s2.Length;
-            int[,] dp = new int[m + 1, n + 1];
+            if (m == 0) return n;
+            if (n == 0) return m;
 
-            for (int i = 0; i <= m; i++)
+            Span<int> prev = n < 128 ? stackalloc int[n + 1] : new int[n + 1];
+            Span<int> curr = n < 128 ? stackalloc int[n + 1] : new int[n + 1];
+
+            for (int j = 0; j <= n; j++) prev[j] = j;
+
+            for (int i = 1; i <= m; i++)
             {
-                for (int j = 0; j <= n; j++)
+                curr[0] = i;
+                char c1 = s1[i - 1];
+
+                for (int j = 1; j <= n; j++)
                 {
-                    if (i == 0)
-                    {
-                        dp[i, j] = j;
-                    }
-                    else if (j == 0)
-                    {
-                        dp[i, j] = i;
-                    }
-                    else if (s1[i - 1] == s2[j - 1])
-                    {
-                        dp[i, j] = dp[i - 1, j - 1];
-                    }
-                    else
-                    {
-                        dp[i, j] = 1 + Math.Min(Math.Min(dp[i - 1, j], dp[i, j - 1]), dp[i - 1, j - 1]);
-                    }
+                    int cost = (c1 == s2[j - 1]) ? 0 : 1;
+                    int del = prev[j] + 1;
+                    int ins = curr[j - 1] + 1;
+                    int sub = prev[j - 1] + cost;
+
+                    curr[j] = Math.Min(Math.Min(del, ins), sub);
                 }
+
+                prev.Clear();
+                curr.CopyTo(prev);
             }
 
-            return dp[m, n];
+            return curr[n];
         }
 
         private static double StringSimilarity(string s1, string s2)
@@ -762,12 +819,13 @@ namespace InventoryKamera
             return bitmap.ConvertToGrayscale();
         }
 
-        internal static void SetContrast(double contrast, ref Bitmap bitmap)
+        internal static void SetContrast(double contrast, Bitmap bitmap)
         {
             bitmap.AdjustContrast((int)contrast);
         }
+        internal static void SetContrast(double contrast, ref Bitmap bitmap) => SetContrast(contrast, bitmap);
 
-        internal static void SetGamma(double red, double green, double blue, ref Bitmap bitmap)
+        internal static void SetGamma(double red, double green, double blue, Bitmap bitmap)
         {
             byte[] redGamma = CreateGammaArray(red);
             byte[] greenGamma = CreateGammaArray(green);
@@ -807,6 +865,7 @@ namespace InventoryKamera
                 bitmap.UnlockBits(data);
             }
         }
+        internal static void SetGamma(double red, double green, double blue, ref Bitmap bitmap) => SetGamma(red, green, blue, bitmap);
 
         private static byte[] CreateGammaArray(double color)
         {
@@ -819,12 +878,13 @@ namespace InventoryKamera
             return gammaArray;
         }
 
-        internal static void SetInvert(ref Bitmap bitmap)
+        internal static void SetInvert(Bitmap bitmap)
         {
             bitmap.InvertColors();
         }
+        internal static void SetInvert(ref Bitmap bitmap) => SetInvert(bitmap);
 
-        internal static void SetBrightness(int brightness, ref Bitmap bitmap)
+        internal static void SetBrightness(int brightness, Bitmap bitmap)
         {
             if (brightness < -255) brightness = -255;
             if (brightness > 255) brightness = 255;
@@ -868,13 +928,15 @@ namespace InventoryKamera
                 bitmap.UnlockBits(data);
             }
         }
+        internal static void SetBrightness(int brightness, ref Bitmap bitmap) => SetBrightness(brightness, bitmap);
 
-        internal static void SetThreshold(int threshold, ref Bitmap bitmap)
+        internal static void SetThreshold(int threshold, Bitmap bitmap)
         {
             bitmap.ApplyThreshold(threshold);
         }
+        internal static void SetThreshold(int threshold, ref Bitmap bitmap) => SetThreshold(threshold, bitmap);
 
-        internal static void FilterColors(ref Bitmap bm, IntRange red, IntRange green, IntRange blue)
+        internal static void FilterColors(Bitmap bm, IntRange red, IntRange green, IntRange blue)
         {
             // Lock the bitmap's bits so we can access pixel data directly (very fast)
             BitmapData data = bm.LockBits(
@@ -931,41 +993,36 @@ namespace InventoryKamera
                 bm.UnlockBits(data);
             }
         }
+        internal static void FilterColors(ref Bitmap bm, IntRange red, IntRange green, IntRange blue) => FilterColors(bm, red, green, blue);
 
-        internal static bool CompareBitmapsFast(Bitmap bmp1, Bitmap bmp2)
+        internal static unsafe bool CompareBitmapsFast(Bitmap bmp1, Bitmap bmp2)
         {
             if (bmp1 == null || bmp2 == null)
                 return false;
-            if (object.Equals(bmp1, bmp2))
+            if (ReferenceEquals(bmp1, bmp2))
                 return true;
             if (!bmp1.Size.Equals(bmp2.Size) || !bmp1.PixelFormat.Equals(bmp2.PixelFormat))
                 return false;
 
-            int bytes = bmp1.Width * bmp1.Height * (System.Drawing.Image.GetPixelFormatSize(bmp1.PixelFormat) / 8);
-
-            bool result = true;
-            byte[] b1bytes = new byte[bytes];
-            byte[] b2bytes = new byte[bytes];
-
             BitmapData bitmapData1 = bmp1.LockBits(new Rectangle(0, 0, bmp1.Width, bmp1.Height), ImageLockMode.ReadOnly, bmp1.PixelFormat);
             BitmapData bitmapData2 = bmp2.LockBits(new Rectangle(0, 0, bmp2.Width, bmp2.Height), ImageLockMode.ReadOnly, bmp2.PixelFormat);
 
-            Marshal.Copy(bitmapData1.Scan0, b1bytes, 0, bytes);
-            Marshal.Copy(bitmapData2.Scan0, b2bytes, 0, bytes);
-
-            for (int n = 0; n <= bytes - 1; n++)
+            try
             {
-                if (b1bytes[n] != b2bytes[n])
-                {
-                    result = false;
-                    break;
-                }
+                if (bitmapData1.Stride != bitmapData2.Stride)
+                    return false;
+
+                int bytes = Math.Abs(bitmapData1.Stride) * bitmapData1.Height;
+                ReadOnlySpan<byte> span1 = new ReadOnlySpan<byte>((void*)bitmapData1.Scan0, bytes);
+                ReadOnlySpan<byte> span2 = new ReadOnlySpan<byte>((void*)bitmapData2.Scan0, bytes);
+
+                return span1.SequenceEqual(span2);
             }
-
-            bmp1.UnlockBits(bitmapData1);
-            bmp2.UnlockBits(bitmapData2);
-
-            return result;
+            finally
+            {
+                bmp1.UnlockBits(bitmapData1);
+                bmp2.UnlockBits(bitmapData2);
+            }
         }
 
         internal static Bitmap PreProcessImage(Bitmap image)
@@ -992,11 +1049,14 @@ namespace InventoryKamera
 
         #endregion Image Operations
 
+        [GeneratedRegex(@"[\W]")]
+        private static partial Regex NonWordRegex();
+
         public static string ConvertToGood(this string text)
         {
             text = text.ToLower();
             var pascal = CultureInfo.GetCultureInfo("en-US").TextInfo.ToTitleCase(text);
-            return Regex.Replace(pascal, @"[\W]", string.Empty);
+            return NonWordRegex().Replace(pascal, string.Empty);
         }
 
         internal static bool CharacterMatchesElement(string name, string element)

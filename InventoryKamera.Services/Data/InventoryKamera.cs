@@ -359,6 +359,8 @@ namespace InventoryKamera
 
 							if (weapon.IsValid())
 							{
+								_logger.LogDebug("Weapon #{Id} validated successfully: {Name} (Rarity: {Rarity}★, Level: {Level}, Refinement: R{Refinement})",
+									weapon.Id, weapon.Name, weapon.Rarity, weapon.Level, weapon.RefinementLevel);
 								UserInterface.IncrementWeaponCount();
 								Inventory.Add(weapon);
 								if (!string.IsNullOrWhiteSpace(weapon.EquippedCharacter))

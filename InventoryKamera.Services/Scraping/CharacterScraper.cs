@@ -6,8 +6,26 @@ using Microsoft.Extensions.Logging;
 
 namespace InventoryKamera
 {
-    public class CharacterScraper
+	public partial class CharacterScraper
 	{
+		[GeneratedRegex(@"[\W_]")]
+		private static partial Regex NonWordUnderscoreRegex();
+
+		[GeneratedRegex(@"\s+\w*")]
+		private static partial Regex TrailingWordsRegex();
+
+		[GeneratedRegex(@"[\W]")]
+		private static partial Regex NonWordRegex();
+
+		[GeneratedRegex(@"(?![\d/]).")]
+		private static partial Regex DigitsOrSlashRegex();
+
+		[GeneratedRegex(@"(?![0-9\s/]).")]
+		private static partial Regex DigitsOrSlashOrSpaceRegex();
+
+		[GeneratedRegex(@"\D")]
+		private static partial Regex NonDigitRegex();
+
 		private readonly ILogger<CharacterScraper> _logger;
 		private AppSettings Settings => SettingsService.Instance.Settings;
 
@@ -229,12 +247,12 @@ namespace InventoryKamera
 				Right:  (int)(460 / xReference * Navigation.GetWidth()),
 				Bottom: (int)(60  / yReference * Navigation.GetHeight()));
 
-			Bitmap nameBitmap = Navigation.CaptureRegion(region);
+			using Bitmap nameBitmap = Navigation.CaptureRegion(region);
 
 			//Image Operations
-			GenshinProcesor.SetGamma(0.2, 0.2, 0.2, ref nameBitmap);
-			GenshinProcesor.SetInvert(ref nameBitmap);
-			Bitmap n = GenshinProcesor.ConvertToGrayscale(nameBitmap);
+			GenshinProcesor.SetGamma(0.2, 0.2, 0.2, nameBitmap);
+			GenshinProcesor.SetInvert(nameBitmap);
+			using Bitmap n = GenshinProcesor.ConvertToGrayscale(nameBitmap);
 
 			UserInterface.SetNavigation_Image(nameBitmap);
 
@@ -242,18 +260,15 @@ namespace InventoryKamera
 			if (text != "")
 			{
 				// Only keep a-Z and 0-9
-				text = Regex.Replace(text, @"[\W_]", string.Empty).ToLower();
+				text = NonWordUnderscoreRegex().Replace(text, string.Empty).ToLower();
 
 				// Only keep text up until first space
-				text = Regex.Replace(text, @"\s+\w*", string.Empty);
-
+				text = TrailingWordsRegex().Replace(text, string.Empty);
 			}
 			else
 			{
 				UserInterface.AddError(text);
 			}
-			n.Dispose();
-			nameBitmap.Dispose();
 			return text;
 		}
 
@@ -303,7 +318,7 @@ namespace InventoryKamera
 
 							// Find character based on string after /
 							// Long name characters might search by their last name only but it'll still work.
-							name = GenshinProcesor.FindClosestCharacterName(Regex.Replace(split[1], @"[\W]", string.Empty));
+							name = GenshinProcesor.FindClosestCharacterName(NonWordRegex().Replace(split[1], string.Empty));
 
 							if (!GenshinProcesor.CharacterMatchesElement(name, element)) { name = ""; element = ""; }
 						}
@@ -337,16 +352,16 @@ namespace InventoryKamera
 
 		private int ScanLevel(ref bool ascended)
 		{
-            int attempt = 0;
+			int attempt = 0;
 
-            var xRef = 1280.0;
+			var xRef = 1280.0;
 			var yRef = 720.0;
 			if (Navigation.GetAspectRatio() == new Size(8, 5))
 			{
 				yRef = 800.0;
 			}
 
-			Rectangle region =  new RECT(
+			Rectangle region = new RECT(
 				Left:   (int)( 960  / xRef * Navigation.GetWidth() ),
 				Top:    (int)( 135  / yRef * Navigation.GetHeight() ),
 				Right:  (int)( 1125 / xRef * Navigation.GetWidth() ),
@@ -354,38 +369,33 @@ namespace InventoryKamera
 
 			do
 			{
-				Bitmap bm = Navigation.CaptureRegion(region);
-
-				bm = GenshinProcesor.ResizeImage(bm, bm.Width * 2, bm.Height * 2);
-				Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-			GenshinProcesor.SetInvert(ref n);
-			string text = GenshinProcesor.AnalyzeText(n).Trim();
-			_logger.LogDebug("Scanned character level as {Text}", text);
-			text = Regex.Replace(text, @"(?![\d/]).", string.Empty);
-			_logger.LogDebug("Filtered scanned text to {Text}", text);
-
-			if (text.Contains("/"))
+				using (Bitmap raw = Navigation.CaptureRegion(region))
+				using (Bitmap bm = GenshinProcesor.ResizeImage(raw, raw.Width * 2, raw.Height * 2))
+				using (Bitmap n = GenshinProcesor.ConvertToGrayscale(bm))
 				{
-					var values = text.Split('/');
-                    if (int.TryParse(values[0], out int level) && int.TryParse(values[1], out int maxLevel))
-                    {
-                        maxLevel = (int)Math.Round(maxLevel / 10.0, MidpointRounding.AwayFromZero) * 10;
-                        ascended = 20 <= level && level < maxLevel;
-                        UserInterface.SetCharacter_Level(bm, level, maxLevel);
-                        n.Dispose();
-                        bm.Dispose();
-                        _logger.LogDebug("Parsed character level as {Level}", level);
-                        return level;
-                    }
-				}
-				            n.Dispose();
-				            bm.Dispose();
-				            _logger.LogDebug("Failed to parse character level and ascension from {Text} (text), retrying", text);
-				attempt++;
+					GenshinProcesor.SetInvert(n);
+					string text = GenshinProcesor.AnalyzeText(n).Trim();
+					_logger.LogDebug("Scanned character level as {Text}", text);
+					text = DigitsOrSlashRegex().Replace(text, string.Empty);
+					_logger.LogDebug("Filtered scanned text to {Text}", text);
 
-                n.Dispose();
-                bm.Dispose();
-                Navigation.SystemWait(Navigation.Speed.Fast);
+					if (text.Contains('/'))
+					{
+						var values = text.Split('/');
+						if (int.TryParse(values[0], out int level) && int.TryParse(values[1], out int maxLevel))
+						{
+							maxLevel = (int)Math.Round(maxLevel / 10.0, MidpointRounding.AwayFromZero) * 10;
+							ascended = 20 <= level && level < maxLevel;
+							UserInterface.SetCharacter_Level(bm, level, maxLevel);
+							_logger.LogDebug("Parsed character level as {Level}", level);
+							return level;
+						}
+					}
+					_logger.LogDebug("Failed to parse character level and ascension from {Text} (text), retrying", text);
+				}
+
+				attempt++;
+				Navigation.SystemWait(Navigation.Speed.Fast);
 			} while (attempt < 50);
 
 			return -1;
@@ -397,23 +407,22 @@ namespace InventoryKamera
 
 			int xOffset = 1117;
 			int yOffset = 151;
-			Bitmap bm = new Bitmap(90, 10);
-			Graphics g = Graphics.FromImage(bm);
-			int screenLocation_X = Navigation.GetPosition().Left + xOffset;
-			int screenLocation_Y = Navigation.GetPosition().Top + yOffset;
-			g.CopyFromScreen(screenLocation_X, screenLocation_Y, 0, 0, bm.Size);
+			using Bitmap raw = new Bitmap(90, 10);
+			using (Graphics g = Graphics.FromImage(raw))
+			{
+				int screenLocation_X = Navigation.GetPosition().Left + xOffset;
+				int screenLocation_Y = Navigation.GetPosition().Top + yOffset;
+				g.CopyFromScreen(screenLocation_X, screenLocation_Y, 0, 0, raw.Size);
+			}
 
 			//Image Operations
-			bm = GenshinProcesor.ResizeImage(bm, bm.Width * 6, bm.Height * 6);
-			//Scraper.ConvertToGrayscale(ref bm);
-			//Scraper.SetInvert(ref bm);
-			GenshinProcesor.SetContrast(30.0, ref bm);
+			using Bitmap bm = GenshinProcesor.ResizeImage(raw, raw.Width * 6, raw.Height * 6);
+			GenshinProcesor.SetContrast(30.0, bm);
 
-			string text = GenshinProcesor.AnalyzeText(bm);
-			text = text.Trim();
-			text = Regex.Replace(text, @"(?![0-9\s/]).", string.Empty);
+			string text = GenshinProcesor.AnalyzeText(bm).Trim();
+			text = DigitsOrSlashOrSpaceRegex().Replace(text, string.Empty);
 
-			if (Regex.IsMatch(text, "/"))
+			if (text.Contains('/'))
 			{
 				string[] temp = text.Split('/');
 				experience = Convert.ToInt32(temp[0]);
@@ -536,17 +545,15 @@ namespace InventoryKamera
 
                 while (talents[talent] < 1 || talents[talent] > 15)
 				{
-					Bitmap talentLevel = Navigation.CaptureRegion(region);
-
-					talentLevel = GenshinProcesor.ResizeImage(talentLevel, talentLevel.Width * 2, talentLevel.Height * 2);
-
-					Bitmap n = GenshinProcesor.ConvertToGrayscale(talentLevel);
-					GenshinProcesor.SetContrast(60, ref n);
-					GenshinProcesor.SetInvert(ref n);
+					using Bitmap raw = Navigation.CaptureRegion(region);
+					using Bitmap talentLevel = GenshinProcesor.ResizeImage(raw, raw.Width * 2, raw.Height * 2);
+					using Bitmap n = GenshinProcesor.ConvertToGrayscale(talentLevel);
+					GenshinProcesor.SetContrast(60, n);
+					GenshinProcesor.SetInvert(n);
 
 					var text = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.SingleBlock).Trim().Split('\n').ToList();
 
-					if (int.TryParse(Regex.Replace(text.Last(), @"\D", string.Empty), out int level))
+					if (int.TryParse(NonDigitRegex().Replace(text.Last(), string.Empty), out int level))
 					{
 						if (level >= 1 && level <= 15)
 						{
@@ -554,9 +561,6 @@ namespace InventoryKamera
 							UserInterface.SetCharacter_Talent(talentLevel, level.ToString(), i);
 						}
 					}
-
-					n.Dispose();
-					talentLevel.Dispose();
 				}
 			}
 

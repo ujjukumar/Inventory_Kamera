@@ -3,8 +3,17 @@ using System.Text.RegularExpressions;
 
 namespace InventoryKamera
 {
-    public class WeaponScraper : InventoryScraper
+    public partial class WeaponScraper : InventoryScraper
     {
+        [GeneratedRegex(@"(?![\d/]).")]
+        private static partial Regex DigitsOrSlashRegex();
+
+        [GeneratedRegex(@"\D")]
+        private static partial Regex NonDigitRegex();
+
+        [GeneratedRegex(@"[\W]")]
+        private static partial Regex NonWordRegex();
+
 		public WeaponScraper(ILogger<WeaponScraper> logger) : base(logger)
         {
             inventoryPage = InventoryPage.Weapons;
@@ -199,12 +208,20 @@ namespace InventoryKamera
 
             bool a = false;
 
-            bool belowRarity = GetQuality(name) < Settings.MinimumWeaponRarity;
-            bool belowLevel = ScanLevel(level, ref a) < Settings.MinimumWeaponLevel;
+            int weaponRarity = GetQuality(name);
+            int weaponLevel = ScanLevel(level, ref a);
+
+            _logger.LogDebug("Queuing weapon #{Id}: Initial Rarity={Rarity}★, Level={Level}, Ascended={Ascended}", 
+                id, weaponRarity, weaponLevel, a);
+
+            bool belowRarity = weaponRarity < Settings.MinimumWeaponRarity;
+            bool belowLevel = weaponLevel < Settings.MinimumWeaponLevel;
             StopScanning = (SortByLevel && belowLevel) || (!SortByLevel && belowRarity);
 
             if (StopScanning || belowRarity || belowLevel)
             {
+                _logger.LogDebug("Skipping weapon #{Id}. StopScanning: {StopScanning}, BelowRarity: {BelowRarity} (min {MinRarity}), BelowLevel: {BelowLevel} (min {MinLevel})",
+                    id, StopScanning, belowRarity, Settings.MinimumWeaponRarity, belowLevel, Settings.MinimumWeaponLevel);
                 weaponImages.ForEach(i => i.Dispose());
                 return;
             }
@@ -250,6 +267,7 @@ namespace InventoryKamera
 
 				// Check for Rarity
 				rarity = GetQuality(bm[w_name]);
+				_logger.LogDebug("Weapon #{Id} detected rarity: {Rarity}★", id, rarity);
 
 				// Check for equipped color
 				Color equippedColor = Color.FromArgb(255, 255, 231, 187);
@@ -260,6 +278,7 @@ namespace InventoryKamera
 				Color lockedColor = Color.FromArgb(255, 70, 80, 100); // Dark area around red lock
 				Color lockStatus = bm[w_lock].GetPixel(10, 10);
 				locked = GenshinProcesor.CompareColors(lockedColor, lockStatus);
+				_logger.LogDebug("Weapon #{Id} status: Equipped={Equipped}, Locked={Locked}", id, b_equipped, locked);
 
 				List<Task> tasks = new List<Task>();
 
@@ -281,6 +300,9 @@ namespace InventoryKamera
 				}
 
 				await Task.WhenAll(tasks.ToArray());
+
+				_logger.LogDebug("Weapon #{Id} catalogued: Name='{Name}', Rarity={Rarity}★, Level={Level}, Ascended={Ascended}, Refinement=R{Refinement}, Equipped='{Equipped}'",
+					id, name, rarity, level, ascended, refinementLevel, equippedCharacter ?? "None");
 			}
 			return new Weapon(name, level, ascended, refinementLevel, locked, equippedCharacter, id, rarity);
 		}
@@ -288,7 +310,12 @@ namespace InventoryKamera
         public bool IsEnhancementMaterial(Bitmap nameBitmap)
 		{
 			string material = ScanEnchancementOreName(nameBitmap);
-			return !string.IsNullOrWhiteSpace(material) && GenshinProcesor.enhancementMaterials.Contains(material.ToLower());
+			bool isOre = !string.IsNullOrWhiteSpace(material) && GenshinProcesor.enhancementMaterials.Contains(material.ToLower());
+			if (isOre)
+			{
+				_logger.LogDebug("Detected enhancement material ore: '{Material}'", material);
+			}
+			return isOre;
 		}
 
 		public string ScanEnchancementOreName(Bitmap bm)
@@ -303,17 +330,19 @@ namespace InventoryKamera
 
 		private string ScanWeaponName(string name)
         {
-            return GenshinProcesor.FindClosestWeapon(name);
+            var matched = GenshinProcesor.FindClosestWeapon(name);
+            _logger.LogDebug("Weapon name parsed: OCR='{Raw}' -> Matched='{Matched}'", name, matched);
+            return matched;
         }
 
         public int ScanLevel(Bitmap bm, ref bool ascended)
 		{
-			Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-			GenshinProcesor.SetInvert(ref n);
+			using Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
+			GenshinProcesor.SetInvert(n);
 
 			string text = GenshinProcesor.AnalyzeText(n).Trim();
-			n.Dispose();
-			text = Regex.Replace(text, @"(?![\d/]).", string.Empty);
+			text = DigitsOrSlashRegex().Replace(text, string.Empty);
+			_logger.LogDebug("Weapon level OCR text: '{Text}'", text);
 
 			if (text.Contains('/'))
 			{
@@ -337,46 +366,46 @@ namespace InventoryKamera
 			for (double factor = 1; factor <= 2; factor += 0.1)
 			{
 				using (Bitmap up = GenshinProcesor.ScaleImage(image, factor))
+				using (Bitmap n = GenshinProcesor.ConvertToGrayscale(up))
 				{
-					Bitmap n = GenshinProcesor.ConvertToGrayscale(up);
-					GenshinProcesor.SetInvert(ref n);
+					GenshinProcesor.SetInvert(n);
 
 					string text = GenshinProcesor.AnalyzeText(n).Trim();
-					n.Dispose();
-					text = Regex.Replace(text, @"[^\d]", string.Empty);
+					text = NonDigitRegex().Replace(text, string.Empty);
 
 					// Parse Int
 					if (int.TryParse(text, out int refinementLevel) && 1 <= refinementLevel && refinementLevel <= 5)
 					{
+						_logger.LogDebug("Weapon refinement parsed as R{Refinement} (scale {Factor:F1})", refinementLevel, factor);
 						return refinementLevel;
 					}
 				}
 			}
+			_logger.LogDebug("Failed to determine weapon refinement, defaulting to -1");
 			return -1;
 		}
 
 		public string ScanEquippedCharacter(Bitmap bm)
 		{
-			Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-			GenshinProcesor.SetContrast(60.0, ref n);
+			using Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
+			GenshinProcesor.SetContrast(60.0, n);
 
 			string extractedString = GenshinProcesor.AnalyzeText(n);
-			n.Dispose();
 
-			if (extractedString != "")
+			if (!string.IsNullOrEmpty(extractedString))
 			{
-				var regexItem = new Regex("Equipped:");
-				if (regexItem.IsMatch(extractedString))
+				if (extractedString.Contains("Equipped:", StringComparison.OrdinalIgnoreCase))
 				{
 					var name = extractedString.Split(':')[1];
 
-					name = Regex.Replace(name, @"[\W]", string.Empty).ToLower();
-					name = GenshinProcesor.FindClosestCharacterName(name);
-
-					return name;
+					name = NonWordRegex().Replace(name, string.Empty).ToLower();
+					var character = GenshinProcesor.FindClosestCharacterName(name);
+					_logger.LogDebug("Weapon equipped character parsed: '{Character}'", character);
+					return character;
 				}
 			}
-			// artifact has no equipped character
+			// weapon has no equipped character
+			_logger.LogDebug("Weapon equipped character: None");
 			return null;
 		}
 

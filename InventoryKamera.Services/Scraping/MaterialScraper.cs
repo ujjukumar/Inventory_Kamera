@@ -37,8 +37,14 @@ namespace InventoryKamera
 		}
 	}
 
-	public class MaterialScraper : InventoryScraper
+	public partial class MaterialScraper : InventoryScraper
 	{
+		[GeneratedRegex(@"[^0-9]")]
+		private static partial Regex NonDigitRegex();
+
+		[GeneratedRegex(@"[\W\s]")]
+		private static partial Regex NonWordOrSpaceRegex();
+
 		public MaterialScraper(ILogger<MaterialScraper> logger) : base(logger)
 		{
 			inventoryPage = InventoryPage.CharacterDevelopmentItems;
@@ -260,12 +266,12 @@ namespace InventoryKamera
 		public string ParseMoraFromScreenshot(Bitmap screenshot)
 		{
 			using (var gray = GenshinProcesor.ConvertToGrayscale(screenshot))
+			using (var invert = (Bitmap)gray.Clone())
 			{
-				var invert = (Bitmap)gray.Clone();
-				GenshinProcesor.SetInvert(ref invert);
+				GenshinProcesor.SetInvert(invert);
 				var input = GenshinProcesor.AnalyzeText(invert).Split(' ').ToList();
 				_logger.LogDebug("Scanned mora input: {Input}", input.ToString());
-				input.RemoveAll(e => Regex.IsMatch(e.Trim(), @"[^0-9]") || string.IsNullOrWhiteSpace(e.Trim()));
+				input.RemoveAll(e => NonDigitRegex().IsMatch(e.Trim()) || string.IsNullOrWhiteSpace(e.Trim()));
 				var mora = input.LastOrDefault();
 				_logger.LogDebug("Parsed mora input: {Mora}", mora);
 				return mora;
@@ -284,26 +290,22 @@ namespace InventoryKamera
 			var reference = new Rectangle(872, 80, 327, 37);
 
 			// Nameplate is in the same place in 16:9 and 16:10
-			var region= new RECT(
+			var region = new RECT(
 				Left:   (int)( reference.Left   / refWidth  * width),
 				Top:    (int)( reference.Top    / refHeight * height),
 				Right:  (int)( reference.Right  / refWidth  * width),
 				Bottom: (int)( reference.Bottom / refHeight * height));
 
-			Bitmap bm = Navigation.CaptureRegion(region);
+			using Bitmap bm = Navigation.CaptureRegion(region);
 			nameplate = (Bitmap)bm.Clone();
 
 			// Alter Image
-			GenshinProcesor.SetGamma(0.2, 0.2, 0.2, ref bm);
-			Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-			GenshinProcesor.SetInvert(ref n);
+			GenshinProcesor.SetGamma(0.2, 0.2, 0.2, bm);
+			using Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
+			GenshinProcesor.SetInvert(n);
 
-			string text = GenshinProcesor.AnalyzeText(n,Tesseract.PageSegMode.Auto);
-			text = Regex.Replace(text, @"[\W\s]", string.Empty).ToLower();
-
-			//UI
-			n.Dispose();
-			bm.Dispose();
+			string text = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.Auto);
+			text = NonWordOrSpaceRegex().Replace(text, string.Empty).ToLower();
 
 			if (inventoryPage == InventoryPage.CharacterDevelopmentItems)
 				return GenshinProcesor.FindClosestDevelopmentName(text);
@@ -335,8 +337,8 @@ namespace InventoryKamera
                 {
 					using (Bitmap rescaled = GenshinProcesor.ResizeImage(bm, (int)(bm.Width * scale), (int)(bm.Height * scale)))
                     {
-                        Bitmap copy = (Bitmap)rescaled.Clone();
-                        GenshinProcesor.FilterColors(ref copy, rRange, bRange, gRange);
+                        using Bitmap copy = (Bitmap)rescaled.Clone();
+                        GenshinProcesor.FilterColors(copy, rRange, bRange, gRange);
 
                         // White out the top 25% (item icon area) in one operation instead
                         // of a per-pixel SetPixel loop, which was very slow in this hot path.
@@ -345,15 +347,12 @@ namespace InventoryKamera
                             g.FillRectangle(Brushes.White, 0, 0, copy.Width, (int)(copy.Height * 0.25));
                         }
 
-                        Bitmap n = GenshinProcesor.ConvertToGrayscale(copy);
+                        using Bitmap n = GenshinProcesor.ConvertToGrayscale(copy);
                         
-						GenshinProcesor.SetInvert(ref n);
+						GenshinProcesor.SetInvert(n);
 						n.ApplyThreshold(50);
 
                         string original = GenshinProcesor.AnalyzeText(n).Trim();
-
-						n.Dispose();
-						copy.Dispose();
 
                         if (int.TryParse(original, out int val)) return val;
 
@@ -362,7 +361,7 @@ namespace InventoryKamera
 
                         cleaned = cleaned.Replace("M", "111");
 
-                        cleaned = Regex.Replace(cleaned, @"[^0-9]", string.Empty);
+                        cleaned = NonDigitRegex().Replace(cleaned, string.Empty);
 
                         int.TryParse(cleaned, out val);
 

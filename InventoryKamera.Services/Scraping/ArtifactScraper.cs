@@ -5,8 +5,35 @@ using Microsoft.Extensions.Logging;
 
 namespace InventoryKamera
 {
-    public class ArtifactScraper : InventoryScraper
+    public partial class ArtifactScraper : InventoryScraper
     {
+        [GeneratedRegex(@"[\W]")]
+        private static partial Regex NonWordRegex();
+
+        [GeneratedRegex(@"[\W_]")]
+        private static partial Regex NonWordUnderscoreRegex();
+
+        [GeneratedRegex(@"[\W_0-9]")]
+        private static partial Regex NonAlphaRegex();
+
+        [GeneratedRegex(@"\D")]
+        private static partial Regex NonDigitRegex();
+
+        [GeneratedRegex(@"(piece|set|2-)")]
+        private static partial Regex SetMarkerRegex();
+
+        [GeneratedRegex(@"^[A-Za-z\s]+:$")]
+        private static partial Regex HeaderColonRegex();
+
+        [GeneratedRegex(@"^[^a-zA-Z]*")]
+        private static partial Regex LeadingNonAlphaRegex();
+
+        [GeneratedRegex(@"^(.*?)(\d+.*)")]
+        private static partial Regex SubstatSplitRegex();
+
+        [GeneratedRegex(@"[^0-9]")]
+        private static partial Regex PureDigitsRegex();
+
         public ArtifactScraper(ILogger<ArtifactScraper> logger) : base(logger)
         {
             inventoryPage = InventoryPage.Artifacts;
@@ -370,16 +397,14 @@ namespace InventoryKamera
 
         private static string ScanEnhancementMaterialName(Bitmap bm)
         {
-            GenshinProcesor.SetGamma(0.2, 0.2, 0.2, ref bm);
-            Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-            GenshinProcesor.SetInvert(ref n);
+            using Bitmap copy = (Bitmap)bm.Clone();
+            GenshinProcesor.SetGamma(0.2, 0.2, 0.2, copy);
+            using Bitmap n = GenshinProcesor.ConvertToGrayscale(copy);
+            GenshinProcesor.SetInvert(n);
 
             // Analyze
-            string name = Regex.Replace(GenshinProcesor.AnalyzeText(n).ToLower(), @"[\W]", string.Empty);
-            name = GenshinProcesor.FindClosestMaterialName(name);
-            n.Dispose();
-
-            return name;
+            string name = NonWordRegex().Replace(GenshinProcesor.AnalyzeText(n).ToLower(), string.Empty);
+            return GenshinProcesor.FindClosestMaterialName(name);
         }
 
         #region Task Methods
@@ -387,15 +412,13 @@ namespace InventoryKamera
         private static string ScanArtifactGearSlot(Bitmap bm)
         {
             // Process Img
-            Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-            GenshinProcesor.SetContrast(80.0, ref n);
-            GenshinProcesor.SetInvert(ref n);
+            using Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
+            GenshinProcesor.SetContrast(80.0, n);
+            GenshinProcesor.SetInvert(n);
 
             string gearSlot = GenshinProcesor.AnalyzeText(n).Trim().ToLower();
-            gearSlot = Regex.Replace(gearSlot, @"[\W_]", string.Empty);
-            gearSlot = GenshinProcesor.FindClosestGearSlot(gearSlot);
-            n.Dispose();
-            return gearSlot;
+            gearSlot = NonWordUnderscoreRegex().Replace(gearSlot, string.Empty);
+            return GenshinProcesor.FindClosestGearSlot(gearSlot);
         }
 
         private static string ScanArtifactMainStat(Bitmap bm, string gearSlot)
@@ -412,19 +435,19 @@ namespace InventoryKamera
 
                 // Otherwise it's either sands, goblet or circlet.
                 default:
-                    Bitmap copy = (Bitmap)bm.Clone();
-                    GenshinProcesor.SetContrast(100.0, ref copy);
-                    Bitmap n = GenshinProcesor.ConvertToGrayscale(copy);
+                {
+                    using Bitmap copy = (Bitmap)bm.Clone();
+                    GenshinProcesor.SetContrast(100.0, copy);
+                    using Bitmap n = GenshinProcesor.ConvertToGrayscale(copy);
                     
-                    GenshinProcesor.SetThreshold(135, ref n);
-                    GenshinProcesor.SetInvert(ref n);
+                    GenshinProcesor.SetThreshold(135, n);
+                    GenshinProcesor.SetInvert(n);
 
                     // Get Main Stat
                     string mainStat = GenshinProcesor.AnalyzeText(n).ToLower().Trim();
-                    
 
                     // Remove anything not a-z as well as removes spaces/underscores
-                    mainStat = Regex.Replace(mainStat, @"[\W_0-9]", string.Empty);
+                    mainStat = NonAlphaRegex().Replace(mainStat, string.Empty);
 
                     mainStat = GenshinProcesor.FindClosestStat(mainStat, 80);
 
@@ -432,52 +455,44 @@ namespace InventoryKamera
                     {
                         mainStat += "_";
                     }
-                    n.Dispose();
-                    copy.Dispose();
                     return mainStat;
+                }
             }
         }
 
         private static int ScanArtifactLevel(Bitmap bm)
         {
             // Process Img
-            Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-            GenshinProcesor.SetContrast(80.0, ref n);
-            GenshinProcesor.SetInvert(ref n);
+            using Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
+            GenshinProcesor.SetContrast(80.0, n);
+            GenshinProcesor.SetInvert(n);
 
             // numbersOnly = true => seems to interpret the '+' as a '4'
             string text = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.SingleWord).Trim().ToLower();
-            n.Dispose();
 
             // Get rid of all non digits
-            text = Regex.Replace(text, @"[\D]", string.Empty);
+            text = NonDigitRegex().Replace(text, string.Empty);
 
             return int.TryParse(text, out int level) ? level : -1;
         }
 
         private (List<SubStat> active, List<SubStat> unactivated) ScanArtifactSubStats(Bitmap artifactImage)
         {
-            Bitmap bm = (Bitmap)artifactImage.Clone();
+            using Bitmap bm = (Bitmap)artifactImage.Clone();
             List<string> lines = new List<string>();
             List<SubStat> substats = new List<SubStat>();
             List<SubStat> unactivated = new List<SubStat>();
             string text;
             bool hasUnactivated = false;
-            try
+
+            GenshinProcesor.SetBrightness(-30, bm);
+            GenshinProcesor.SetContrast(85, bm);
+            using (var n = GenshinProcesor.ConvertToGrayscale(bm))
             {
-                GenshinProcesor.SetBrightness(-30, ref bm);
-                GenshinProcesor.SetContrast(85, ref bm);
-                using (var n = GenshinProcesor.ConvertToGrayscale(bm))
-                {
-                    text = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.Auto).ToLower();
-                }
-            }
-            finally
-            {
-                bm.Dispose();
+                text = GenshinProcesor.AnalyzeText(n, Tesseract.PageSegMode.Auto).ToLower();
             }
 
-            if(text.Contains("(unactivated)"))
+            if (text.Contains("(unactivated)"))
             {
                 hasUnactivated = true;
             }
@@ -486,8 +501,8 @@ namespace InventoryKamera
             lines.RemoveAll(line => string.IsNullOrWhiteSpace(line));
 
             var index = lines.FindIndex(line =>
-                Regex.IsMatch(line, @"(piece|set|2-)") ||
-                Regex.IsMatch(line.Trim(), @"^[A-Za-z\s]+:$")
+                SetMarkerRegex().IsMatch(line) ||
+                HeaderColonRegex().IsMatch(line.Trim())
             );
             if (index >= 0)
             {
@@ -496,15 +511,14 @@ namespace InventoryKamera
 
             for (int i = 0; i < lines.Count; i++)
             {
-                var line = Regex.Replace(lines[i], @"(?:^[^a-zA-Z]*)", string.Empty).Replace(" ", string.Empty);
+                var line = LeadingNonAlphaRegex().Replace(lines[i], string.Empty).Replace(" ", string.Empty);
 
                 if (line.Any(char.IsDigit))
                 {
                     _logger.LogDebug("Parsing artifact substat: {Line}", line);
 
                     SubStat substat = new SubStat();
-                    Regex re = new Regex(@"^(.*?)(\d+.*)");
-                    var result = re.Match(line);
+                    var result = SubstatSplitRegex().Match(line);
 
                     // Without a stat/value split there is nothing usable on this line;
                     // skip it rather than inserting a blank, invalid substat.
@@ -514,7 +528,7 @@ namespace InventoryKamera
                         continue;
                     }
 
-                    var stat = Regex.Replace(result.Groups[1].Value, @"[^\w]", string.Empty);
+                    var stat = NonWordRegex().Replace(result.Groups[1].Value, string.Empty);
                     var value = result.Groups[2].Value;
 
                     string name = line.Contains("%") ? stat + "%" : stat;
@@ -522,7 +536,7 @@ namespace InventoryKamera
                     substat.stat = GenshinProcesor.FindClosestStat(name, 80) ?? "";
 
                     // Remove any non digits.
-                    value = Regex.Replace(value, @"[^0-9]", string.Empty);
+                    value = PureDigitsRegex().Replace(value, string.Empty);
 
                     // Try to parse number
                     if (!decimal.TryParse(value, out substat.value))
@@ -546,12 +560,12 @@ namespace InventoryKamera
                 }
             }
 
-            if(substats.Count == 0 )
+            if (substats.Count == 0)
             {
                 _logger.LogDebug("Failed to obtain substats");
             }
 
-            //if theres an unactivated substat, moves the last one (should be the only unactivated) to the unactivated list
+            // If there's an unactivated substat, move the last one to the unactivated list
             if (hasUnactivated && substats.Count > 0)
             {
                 SubStat lastSubstat = substats[substats.Count - 1];
@@ -564,20 +578,17 @@ namespace InventoryKamera
 
         private static string ScanArtifactEquippedCharacter(Bitmap bm)
         {
-            Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
-            GenshinProcesor.SetContrast(60.0, ref n);
+            using Bitmap n = GenshinProcesor.ConvertToGrayscale(bm);
+            GenshinProcesor.SetContrast(60.0, n);
 
             string equippedCharacter = GenshinProcesor.AnalyzeText(n).ToLower();
-            n.Dispose();
 
-            if (equippedCharacter != "")
+            if (!string.IsNullOrEmpty(equippedCharacter))
             {
                 if (equippedCharacter.Contains("equipped") && equippedCharacter.Contains(":"))
                 {
-                    equippedCharacter = Regex.Replace(equippedCharacter.Split(':')[1], @"[\W]", string.Empty);
-                    equippedCharacter = GenshinProcesor.FindClosestCharacterName(equippedCharacter);
-
-                    return equippedCharacter;
+                    equippedCharacter = NonWordRegex().Replace(equippedCharacter.Split(':')[1], string.Empty);
+                    return GenshinProcesor.FindClosestCharacterName(equippedCharacter);
                 }
             }
             // artifact has no equipped character
@@ -586,27 +597,14 @@ namespace InventoryKamera
 
         private static string ScanArtifactSet(Bitmap itemName)
         {
-            GenshinProcesor.SetGamma(0.2, 0.2, 0.2, ref itemName);
-            Bitmap grayscale = GenshinProcesor.ConvertToGrayscale(itemName);
-            GenshinProcesor.SetInvert(ref grayscale);
+            using Bitmap copy = (Bitmap)itemName.Clone();
+            GenshinProcesor.SetGamma(0.2, 0.2, 0.2, copy);
+            using Bitmap grayscale = GenshinProcesor.ConvertToGrayscale(copy);
+            GenshinProcesor.SetInvert(grayscale);
 
-            // Analyze
-            using (Bitmap padded = new Bitmap((int)(grayscale.Width + grayscale.Width * .1), grayscale.Height + (int)(grayscale.Height * .5)))
-            {
-                using (Graphics g = Graphics.FromImage(padded))
-                {
-                    g.Clear(Color.White);
-                    g.DrawImage(grayscale, (padded.Width - grayscale.Width) / 2, (padded.Height - grayscale.Height) / 2);
-
-                    var scannedText = GenshinProcesor.AnalyzeText(grayscale, Tesseract.PageSegMode.Auto).ToLower().Replace("\n", " ");
-                    string text = Regex.Replace(scannedText, @"[\W]", string.Empty);
-                    text = GenshinProcesor.FindClosestArtifactSetFromArtifactName(text);
-
-                    grayscale.Dispose();
-
-                    return text;
-                }
-            }
+            var scannedText = GenshinProcesor.AnalyzeText(grayscale, Tesseract.PageSegMode.Auto).ToLower().Replace("\n", " ");
+            string text = NonWordRegex().Replace(scannedText, string.Empty);
+            return GenshinProcesor.FindClosestArtifactSetFromArtifactName(text);
         }
 
         #endregion Task Methods
