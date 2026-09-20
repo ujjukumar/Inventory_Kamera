@@ -61,9 +61,7 @@ namespace InventoryKamera
                     cancellationToken.ThrowIfCancellationRequested();
 
                     Rectangle item = rectangles[i];
-                    Navigation.SetCursor(item.Center().X, item.Center().Y + offset);
-                    Navigation.Click();
-                    Navigation.SystemWait(Navigation.Speed.SelectNextInventoryItem);
+                    Navigation.SelectItemAdaptive(item, offset, cancellationToken);
 
                     // Queue card for scanning
                     QueueScan(cardsQueued);

@@ -1,4 +1,6 @@
-﻿namespace InventoryKamera;
+using InventoryKamera.Properties;
+
+namespace InventoryKamera;
 
 public static class UserInterface
 {
@@ -293,10 +295,61 @@ public static class UserInterface
 			AddLogEntry(level, loggerName, logEvent.FormattedMessage, logEvent.TimeStamp);
 		});
 
-		var config = NLog.LogManager.Configuration;
+		var config = NLog.LogManager.Configuration ?? new NLog.Config.LoggingConfiguration();
 		config.AddTarget(target);
-		config.AddRule(NLog.LogLevel.Info, NLog.LogLevel.Fatal, target);
+
+		var initialLevel = SettingsService.Instance.Settings.LogLevel ?? "Info";
+		var minLevel = ParseLogLevel(initialLevel);
+		config.AddRule(minLevel, NLog.LogLevel.Fatal, target);
+		NLog.LogManager.Configuration = config;
 		NLog.LogManager.ReconfigExistingLoggers();
+	}
+
+	public static void SetLogLevel(string levelName)
+	{
+		var minLevel = ParseLogLevel(levelName);
+		var config = NLog.LogManager.Configuration;
+		if (config == null) return;
+
+		var target = config.FindTargetByName("ui");
+		if (target != null)
+		{
+			foreach (var rule in config.LoggingRules.Where(r => r.Targets.Contains(target)).ToList())
+			{
+				config.LoggingRules.Remove(rule);
+			}
+			config.AddRule(minLevel, NLog.LogLevel.Fatal, target);
+			NLog.LogManager.ReconfigExistingLoggers();
+		}
+	}
+
+	private static NLog.LogLevel ParseLogLevel(string levelName)
+	{
+		return levelName.ToLowerInvariant() switch
+		{
+			"trace" => NLog.LogLevel.Trace,
+			"debug" => NLog.LogLevel.Debug,
+			"warn" or "warning" => NLog.LogLevel.Warn,
+			"error" => NLog.LogLevel.Error,
+			"fatal" => NLog.LogLevel.Fatal,
+			_ => NLog.LogLevel.Info,
+		};
+	}
+
+	public static void ClearLog()
+	{
+		if (error_TextBox == null || error_TextBox.IsDisposed) return;
+		try
+		{
+			error_TextBox.Invoke((MethodInvoker)delegate
+			{
+				lock (_logLock)
+				{
+					error_TextBox.Clear();
+				}
+			});
+		}
+		catch { }
 	}
 
 	public static void AddLogEntry(string level, string loggerName, string message, DateTime timestamp)
@@ -321,6 +374,8 @@ public static class UserInterface
 						"FATAL" or "ERROR" => Color.FromArgb(231, 76, 60),
 						"WARN" => Color.FromArgb(243, 156, 18),
 						"INFO" => Color.FromArgb(200, 210, 220),
+						"DEBUG" => Color.FromArgb(52, 152, 219),
+						"TRACE" => Color.FromArgb(149, 165, 166),
 						_ => Color.FromArgb(127, 140, 141),
 					};
 

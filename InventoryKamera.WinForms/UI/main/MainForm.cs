@@ -132,6 +132,12 @@ namespace InventoryKamera
                 OutputPath_TextBox.Text = Directory.GetCurrentDirectory() + @"\GenshinData";
             }
 
+            var savedLevel = SettingsService.Instance.Settings.LogLevel ?? "Info";
+            if (!LogLevel_ComboBox.Items.Contains(savedLevel))
+                savedLevel = "Info";
+            LogLevel_ComboBox.SelectedItem = savedLevel;
+            UserInterface.SetLogLevel(savedLevel);
+
         }
 
         private void UpdateKeyTextBoxes()
@@ -691,6 +697,20 @@ namespace InventoryKamera
         private void ErrorLog_Label_Click(object sender, EventArgs e)
         {
             Process.Start(new ProcessStartInfo(@"logging") { UseShellExecute = true });
+        }
+
+        private void LogLevel_ComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            var selectedLevel = LogLevel_ComboBox.SelectedItem?.ToString() ?? "Info";
+            SettingsService.Instance.Settings.LogLevel = selectedLevel;
+            SettingsService.Instance.Save();
+            UserInterface.SetLogLevel(selectedLevel);
+            _logger.LogInformation("Activity log level set to {Level}", selectedLevel);
+        }
+
+        private void ClearLog_Button_Click(object sender, EventArgs e)
+        {
+            UserInterface.ClearLog();
         }
     }
 }

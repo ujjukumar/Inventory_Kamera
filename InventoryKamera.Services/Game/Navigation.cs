@@ -75,6 +75,7 @@ namespace InventoryKamera
 			WindowPosition = new RECT();
 			AspectRatio = new Size();
 			sim = new InputSimulator();
+			CardChangeDetector.Cleanup();
 		}
 
 		#region Window Capturing
@@ -393,6 +394,43 @@ namespace InventoryKamera
 		public static void Click(Point point)
 		{
 			Click(point.X, point.Y);
+		}
+
+		public static void SelectItemAdaptive(Rectangle item, int offset = 0, CancellationToken cancellationToken = default)
+		{
+			// Natural humanized cursor jitter: +/- 3 pixels around cell center
+			int jitterX = Random.Shared.Next(-3, 4);
+			int jitterY = Random.Shared.Next(-3, 4);
+
+			SetCursor(item.Center().X + jitterX, item.Center().Y + offset + jitterY);
+
+			if (!GenshinInventoryGrid.IsSupported1080p())
+			{
+				Click();
+				SystemWait(Speed.SelectNextInventoryItem);
+				return;
+			}
+
+			CardChangeDetector.TakeSample();
+			Click();
+			CardChangeDetector.WaitUntilChanged(cancellationToken);
+
+			// Humanized pacing based on user Delay setting:
+			// Delay 0 (0.5): Turbo mode (5-12ms randomized micro-pause)
+			// Delay 1 (1.0): Balanced humanized mode (40-65ms natural click pacing)
+			// Delay 2 (1.5): Relaxed humanized mode (80-120ms natural click pacing)
+			double delayFactor = GetDelay();
+			if (delayFactor > 0.6)
+			{
+				int basePacing = (int)((delayFactor - 0.5) * 90);
+				int pacingJitter = Random.Shared.Next(-10, 15);
+				int finalPacing = Math.Max(15, basePacing + pacingJitter);
+				Thread.Sleep(finalPacing);
+			}
+			else
+			{
+				Thread.Sleep(Random.Shared.Next(5, 12));
+			}
 		}
 
 		public static void Scroll(Direction direction, int scrolls, int delay = 1)

@@ -97,9 +97,7 @@ namespace InventoryKamera
 					cancellationToken.ThrowIfCancellationRequested();
 
 					// Select Material
-					Navigation.SetCursor(rectangle.Center().X, rectangle.Center().Y);
-					Navigation.Click();
-					Navigation.SystemWait(Navigation.Speed.SelectNextInventoryItem);
+					Navigation.SelectItemAdaptive(rectangle, 0, cancellationToken);
 
 					material.name = ScanMaterialName(out Bitmap nameplate);
 					material.count = 0;
@@ -189,9 +187,7 @@ namespace InventoryKamera
 			{
 				// Select Material
 				Rectangle rectangle = rectangles[i];
-				Navigation.SetCursor(rectangle.Center().X, rectangle.Center().Y);
-				Navigation.Click();
-				Navigation.SystemWait(Navigation.Speed.SelectNextInventoryItem);
+				Navigation.SelectItemAdaptive(rectangle, 0, cancellationToken);
 
 				material.name = ScanMaterialName(out Bitmap nameplate);
 				material.count = 0;

@@ -83,21 +83,15 @@ namespace InventoryKamera
         /// <returns>An image of the in-game item card</returns>
         internal Bitmap GetItemCard()
         {
-            Rectangle cardRectangle = new Rectangle();
-
-            using (var window = Navigation.CaptureWindow())
+            Rectangle cardRectangle = new Rectangle
             {
+                X = (int)(Navigation.GetWidth() * 0.6807),
+                Y = (int)(Navigation.GetHeight() * (Navigation.IsNormal ? 0.1102 : 0.0989)),
+                Width = (int)(Navigation.GetWidth() * 0.2573),
+                Height = (int)(Navigation.GetHeight() * (Navigation.IsNormal ? 0.7787 : 0.8022))
+            };
 
-                cardRectangle.X = (int)(window.Width * 0.6807);
-                cardRectangle.Y = (int)(window.Height * (Navigation.IsNormal ? 0.1102 : 0.0989));
-
-                cardRectangle.Width = (int)(window.Width * 0.2573);
-                cardRectangle.Height = (int)(window.Height * (Navigation.IsNormal ? 0.7787 : 0.8022));
-
-
-                return GenshinProcesor.CopyBitmap(window, cardRectangle);
-            }
-
+            return Navigation.CaptureRegion(cardRectangle);
         }
 
         /// <summary>
@@ -399,6 +393,30 @@ namespace InventoryKamera
 
         internal (List<Rectangle> rectangles, int cols, int rows) GetPageOfItems(int pageNum, bool acceptLess = false)
         {
+            if (GenshinInventoryGrid.TryGetGrid(inventoryPage, out var deterministicGrid, out int dCols, out int dRows))
+            {
+                _logger.LogDebug("Using deterministic 16:9 1080p grid for {Page} ({Cols}x{Rows} = {Count} items)",
+                    inventoryPage, dCols, dRows, deterministicGrid.Count);
+
+                prevRect = deterministicGrid;
+                prevColumn = dCols;
+                prevRow = dRows;
+
+                if (Settings.LogScreenshots)
+                {
+                    using Bitmap screenshot = Navigation.CaptureWindow();
+                    SaveInventoryBitmap(screenshot, $"{inventoryPage}Inventory.png");
+                    using (Graphics g = Graphics.FromImage(screenshot))
+                    using (var pen = new Pen(Color.Green, 2))
+                    {
+                        deterministicGrid.ForEach(r => g.DrawRectangle(pen, r));
+                    }
+                    SaveInventoryBitmap(screenshot, $"{inventoryPage}Inventory{pageNum}_{dCols}x{dRows}.png");
+                }
+
+                return (deterministicGrid, dCols, dRows);
+            }
+
             // Screenshot of inventory
             using (Bitmap screenshot = Navigation.CaptureWindow())
             using (Bitmap processedScreenshot = new Bitmap(screenshot))

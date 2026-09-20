@@ -194,6 +194,13 @@ namespace InventoryKamera.Properties
             set => SetField(ref _logScreenshots, value);
         }
 
+        private string _logLevel = "Info";
+        public string LogLevel
+        {
+            get => _logLevel;
+            set => SetField(ref _logLevel, value ?? "Info");
+        }
+
         #endregion
 
         #region Game Executables

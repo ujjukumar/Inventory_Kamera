@@ -136,6 +136,9 @@ partial class MainForm
         ErrorReport_Label = new Label();
         IssuesPage_Label = new LinkLabel();
         ErrorLog_TextBox = new RichTextBox();
+        LogLevel_Label = new Label();
+        LogLevel_ComboBox = new ComboBox();
+        ClearLog_Button = new Button();
 
         folderBrowserDialog1 = new FolderBrowserDialog();
         equipWeaponToolTip = new ToolTip(components);
@@ -1036,6 +1039,9 @@ partial class MainForm
         ScannerOutput_Panel.Controls.Add(ErrorLog_Label);
         ScannerOutput_Panel.Controls.Add(ErrorReport_Label);
         ScannerOutput_Panel.Controls.Add(IssuesPage_Label);
+        ScannerOutput_Panel.Controls.Add(LogLevel_Label);
+        ScannerOutput_Panel.Controls.Add(LogLevel_ComboBox);
+        ScannerOutput_Panel.Controls.Add(ClearLog_Button);
         ScannerOutput_Panel.Controls.Add(ErrorLog_TextBox);
         ScannerOutput_Panel.Location = new Point(198, 292);
         ScannerOutput_Panel.Name = "ScannerOutput_Panel";
@@ -1234,9 +1240,50 @@ partial class MainForm
         IssuesPage_Label.TabStop = true;
         IssuesPage_Label.Text = "Issue Page";
         IssuesPage_Label.LinkClicked += IssuesPage_Label_LinkClicked;
-        //
+        // 
+        // LogLevel_Label
+        // 
+        LogLevel_Label.AutoSize = true;
+        LogLevel_Label.Font = new Font("Segoe UI Semibold", 8.25F, FontStyle.Bold);
+        LogLevel_Label.ForeColor = Color.FromArgb(189, 195, 199);
+        LogLevel_Label.Location = new Point(436, 224);
+        LogLevel_Label.Name = "LogLevel_Label";
+        LogLevel_Label.Size = new Size(36, 13);
+        LogLevel_Label.TabIndex = 18;
+        LogLevel_Label.Text = "Level:";
+        // 
+        // LogLevel_ComboBox
+        // 
+        LogLevel_ComboBox.BackColor = Color.FromArgb(52, 73, 94);
+        LogLevel_ComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        LogLevel_ComboBox.FlatStyle = FlatStyle.Flat;
+        LogLevel_ComboBox.Font = new Font("Segoe UI", 8F);
+        LogLevel_ComboBox.ForeColor = Color.FromArgb(236, 240, 241);
+        LogLevel_ComboBox.FormattingEnabled = true;
+        LogLevel_ComboBox.Items.AddRange(new object[] { "Debug", "Info", "Warn", "Error" });
+        LogLevel_ComboBox.Location = new Point(474, 220);
+        LogLevel_ComboBox.Name = "LogLevel_ComboBox";
+        LogLevel_ComboBox.Size = new Size(74, 21);
+        LogLevel_ComboBox.TabIndex = 19;
+        LogLevel_ComboBox.SelectedIndexChanged += LogLevel_ComboBox_SelectedIndexChanged;
+        // 
+        // ClearLog_Button
+        // 
+        ClearLog_Button.BackColor = Color.FromArgb(52, 73, 94);
+        ClearLog_Button.FlatAppearance.BorderColor = Color.FromArgb(80, 100, 120);
+        ClearLog_Button.FlatStyle = FlatStyle.Flat;
+        ClearLog_Button.Font = new Font("Segoe UI", 7.5F);
+        ClearLog_Button.ForeColor = Color.FromArgb(189, 195, 199);
+        ClearLog_Button.Location = new Point(554, 220);
+        ClearLog_Button.Name = "ClearLog_Button";
+        ClearLog_Button.Size = new Size(48, 21);
+        ClearLog_Button.TabIndex = 20;
+        ClearLog_Button.Text = "Clear";
+        ClearLog_Button.UseVisualStyleBackColor = false;
+        ClearLog_Button.Click += ClearLog_Button_Click;
+        // 
         // ErrorLog_TextBox
-        //
+        // 
         ErrorLog_TextBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         ErrorLog_TextBox.BackColor = Color.FromArgb(52, 73, 94);
         ErrorLog_TextBox.BorderStyle = BorderStyle.None;
@@ -1360,6 +1407,9 @@ partial class MainForm
     private System.Windows.Forms.Label ErrorLog_Label;
     private System.Windows.Forms.Label ErrorReport_Label;
     private System.Windows.Forms.LinkLabel IssuesPage_Label;
+    private System.Windows.Forms.Label LogLevel_Label;
+    private System.Windows.Forms.ComboBox LogLevel_ComboBox;
+    private System.Windows.Forms.Button ClearLog_Button;
     private System.Windows.Forms.LinkLabel Releases_Label;
     private System.Windows.Forms.PictureBox Navigation_Image;
     private System.Windows.Forms.Label Navigation_Label;
