@@ -63,3 +63,5 @@ logging
 # Disposable verification/scratch harnesses (see docs/Migration.md)
 __ikverify/
 
+/scripts/__pycache__
+GenshinScans
