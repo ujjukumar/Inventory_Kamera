@@ -53,7 +53,7 @@ namespace InventoryKamera
 				var character = ScanCharacter(first);
 				
 				// Skip mannequins/test characters
-				if (!string.IsNullOrEmpty(character.NameGOOD) && character.NameGOOD.Contains("Manequin"))
+				if (!string.IsNullOrEmpty(character.NameGOOD) && character.NameGOOD.Contains("manequin", StringComparison.OrdinalIgnoreCase))
 				{
 					_logger.LogInformation("Skipping mannequin/test character: {Name}", character.NameGOOD);
 					Navigation.SelectNextCharacter();
@@ -138,10 +138,12 @@ namespace InventoryKamera
 				name.Equals("MannequinBoy", StringComparison.OrdinalIgnoreCase) ||
 				name.Equals("MannequinGirl", StringComparison.OrdinalIgnoreCase) ||
 				name.Equals("PlayerGirl", StringComparison.OrdinalIgnoreCase) ||
-				name.Equals("Columbina", StringComparison.OrdinalIgnoreCase)))
+				(!string.IsNullOrWhiteSpace(Settings.Manequin1Name) && name.Equals(Settings.Manequin1Name, StringComparison.OrdinalIgnoreCase)) ||
+				(!string.IsNullOrWhiteSpace(Settings.Manequin2Name) && name.Equals(Settings.Manequin2Name, StringComparison.OrdinalIgnoreCase))))
 			{
-				character.NameGOOD = "manequin";
-									_logger.LogDebug("Detected mannequin/test character: {Name}", name);				return character;
+				character.NameGOOD = "Manequin";
+				_logger.LogInformation("Detected mannequin/test character: {Name}", name);
+				return character;
 			}
 
 			if (string.IsNullOrWhiteSpace(name))

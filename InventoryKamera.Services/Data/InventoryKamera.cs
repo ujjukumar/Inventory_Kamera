@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -29,15 +30,16 @@ namespace InventoryKamera
 
 		private List<Artifact> equippedArtifacts;
 		private List<Weapon> equippedWeapons;
-		public static Queue<OCRImageCollection> workerQueue;
-		private List<Thread> ImageProcessors;
+		private static Channel<OCRImageCollection> _workerChannel;
+		private List<Task> _processorTasks;
+		private CancellationTokenSource _pipelineCts;
+		private readonly object _inventoryLock = new();
 
 		private WeaponScraper weaponScraper;
 		private ArtifactScraper artifactScraper;
 		private CharacterScraper characterScraper;
 		private MaterialScraper materialScraper;
 
-		private volatile bool b_threadCancel;
 		private readonly int NumWorkers;
 
 		public bool HasData
@@ -56,15 +58,11 @@ namespace InventoryKamera
 			Inventory = new Inventory();
 			equippedArtifacts = new List<Artifact>();
 			equippedWeapons = new List<Weapon>();
-			ImageProcessors = new List<Thread>();
-			workerQueue = new Queue<OCRImageCollection>();
 
 			this.weaponScraper = weaponScraper;
 			this.artifactScraper = artifactScraper;
 			this.characterScraper = characterScraper;
 			this.materialScraper = materialScraper;
-
-			b_threadCancel = false;
 
             switch (Settings.ScannerDelay)
             {
@@ -76,6 +74,46 @@ namespace InventoryKamera
 					break;
             }
 			_logger.LogInformation("Kamera initialized");
+		}
+
+		public static void Enqueue(OCRImageCollection item)
+		{
+			var channel = _workerChannel;
+			if (channel == null)
+			{
+				item.Bitmaps?.ForEach(b => b?.Dispose());
+				return;
+			}
+
+			try
+			{
+				if (!channel.Writer.TryWrite(item))
+				{
+					// Bounded channel is full (backpressure); wait synchronously on the scraper thread
+					channel.Writer.WriteAsync(item).AsTask().GetAwaiter().GetResult();
+				}
+			}
+			catch (ChannelClosedException)
+			{
+				item.Bitmaps?.ForEach(b => b?.Dispose());
+			}
+			catch (OperationCanceledException)
+			{
+				item.Bitmaps?.ForEach(b => b?.Dispose());
+				throw;
+			}
+		}
+
+		public static ValueTask EnqueueAsync(OCRImageCollection item, CancellationToken cancellationToken = default)
+		{
+			var channel = _workerChannel;
+			if (channel == null)
+			{
+				item.Bitmaps?.ForEach(b => b?.Dispose());
+				return ValueTask.CompletedTask;
+			}
+
+			return channel.Writer.WriteAsync(item, cancellationToken);
 		}
 
 		public void ResetLogging()
@@ -129,9 +167,28 @@ namespace InventoryKamera
 
 		public void StopImageProcessorWorkers()
 		{
-			b_threadCancel = true;
+			try
+			{
+				_pipelineCts?.Cancel();
+			}
+			catch (ObjectDisposedException) { }
+
+			_workerChannel?.Writer.TryComplete();
+
+			// Drain channel and dispose any remaining bitmaps to prevent memory leaks
+			if (_workerChannel != null)
+			{
+				while (_workerChannel.Reader.TryRead(out var item))
+				{
+					item?.Bitmaps?.ForEach(b => b?.Dispose());
+				}
+			}
+
 			AwaitProcessors();
-			workerQueue = new Queue<OCRImageCollection>();
+
+			_pipelineCts?.Dispose();
+			_pipelineCts = null;
+			_workerChannel = null;
 		}
 
 		public void GatherData(CancellationToken cancellationToken = default)
@@ -142,14 +199,23 @@ namespace InventoryKamera
 
 			GenshinProcesor.ReloadData();
 
-			// Initize Image Processors
+			// Initialize bounded Channel and async OCR workers
+			_pipelineCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			var channelOptions = new BoundedChannelOptions(32)
+			{
+				FullMode = BoundedChannelFullMode.Wait,
+				SingleWriter = false,
+				SingleReader = false
+			};
+			_workerChannel = Channel.CreateBounded<OCRImageCollection>(channelOptions);
+			_processorTasks = new List<Task>();
+
 			for (int i = 0; i < NumWorkers; i++)
 			{
-				Thread processor = new Thread(ImageProcessorWorker){ IsBackground = true };
-				processor.Start();
-				ImageProcessors.Add(processor);
+				int workerId = i + 1;
+				_processorTasks.Add(Task.Run(() => ImageProcessorWorkerAsync(workerId, _workerChannel.Reader, _pipelineCts.Token)));
 			}
-			_logger.LogDebug("Added {Count} workers", ImageProcessors.Count);
+			_logger.LogDebug("Started {Count} async OCR worker tasks", _processorTasks.Count);
 
 			GenshinProcesor.RestartEngines();
 
@@ -214,7 +280,8 @@ namespace InventoryKamera
 				_logger.LogInformation("Done scanning artifacts");
 			}
 
-			workerQueue.Enqueue(new OCRImageCollection(null, "END", 0));
+			// Signal that gear scanning is complete; workers will process remaining queue and exit
+			_workerChannel?.Writer.TryComplete();
 
 			_cancellationToken.ThrowIfCancellationRequested();
 
@@ -304,207 +371,220 @@ namespace InventoryKamera
 
 		private void AwaitProcessors()
 		{
-			// Block until every worker thread has exited. Thread.Join yields the CPU
-			// while waiting instead of the previous tight RemoveAll() spin loop, which
-			// pegged a core at 100% for the entire scan.
-			foreach (var processor in ImageProcessors)
+			if (_processorTasks != null && _processorTasks.Count > 0)
 			{
-				processor.Join();
+				try
+				{
+					Task.WhenAll(_processorTasks).GetAwaiter().GetResult();
+				}
+				catch (OperationCanceledException)
+				{
+					// Scan cancelled
+				}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(ex, "Exception awaiting OCR worker tasks");
+				}
+				finally
+				{
+					_processorTasks.Clear();
+				}
 			}
-			ImageProcessors.Clear();
-			b_threadCancel = false;
 		}
 
-		public void ImageProcessorWorker()
+		private async Task ImageProcessorWorkerAsync(int workerId, ChannelReader<OCRImageCollection> reader, CancellationToken cancellationToken)
 		{
-			_logger.LogDebug("Thread #{ThreadId} priority: {Priority}", Thread.CurrentThread.ManagedThreadId, Thread.CurrentThread.Priority);
-			while (true)
+			_logger.LogDebug("Worker #{WorkerId} started on Thread #{ThreadId}", workerId, Environment.CurrentManagedThreadId);
+			try
 			{
-				if (b_threadCancel)
+				await foreach (OCRImageCollection imageCollection in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
 				{
-					workerQueue.Clear();
-					break;
-				}
-
-				if (workerQueue.TryDequeue(out OCRImageCollection imageCollection))
-				{
-					try
+					if (cancellationToken.IsCancellationRequested)
 					{
-					// If a scan was stopped, skip any in-flight item rather than doing
-					// window-dependent work against a game window that may be gone.
-					if (b_threadCancel)
-					{
-						workerQueue.Clear();
+						imageCollection?.Bitmaps?.ForEach(b => b?.Dispose());
 						break;
 					}
-					switch (imageCollection.Type)
+
+					try
 					{
-						case "weapon":
-							if (weaponScraper.IsEnhancementMaterial(imageCollection.Bitmaps.First()))
-							{
-								_logger.LogDebug("Enhancement Material found for weapon #{weaponID}", imageCollection.Id);
-								weaponScraper.StopScanning = true;
-								break;
-							}
-
-							UserInterface.SetGearPictureBox(imageCollection.Bitmaps.Last());
-
-							// Scan as weapon
-							Weapon weapon = weaponScraper.CatalogueFromBitmapsAsync(imageCollection.Bitmaps, imageCollection.Id).Result;
-							UserInterface.SetGear(imageCollection.Bitmaps.Last(), weapon);
-
-							string weaponPath = $"./logging/weapons/weapon{weapon.Id}/";
-
-							if (Settings.LogScreenshots) Directory.CreateDirectory(weaponPath);
-
-							if (weapon.IsValid())
-							{
-								_logger.LogDebug("Weapon #{Id} validated successfully: {Name} (Rarity: {Rarity}★, Level: {Level}, Refinement: R{Refinement})",
-									weapon.Id, weapon.Name, weapon.Rarity, weapon.Level, weapon.RefinementLevel);
-								UserInterface.IncrementWeaponCount();
-								Inventory.Add(weapon);
-								if (!string.IsNullOrWhiteSpace(weapon.EquippedCharacter))
-									equippedWeapons.Add(weapon);
-							}
-							else
-							{
-								UserInterface.AddError($"Unable to validate information for weapon ID#{weapon.Id}");
-								string error = "";
-								if (!weapon.HasValidWeaponName()) error += "Invalid weapon name\n"; 
-								if (!weapon.HasValidRarity()) error += "Invalid weapon rarity\n";
-								if (!weapon.HasValidLevel()) error += "Invalid weapon level\n";
-								if (!weapon.HasValidRefinementLevel()) error += "Invalid refinement level\n";
-								if (!weapon.HasValidEquippedCharacter()) error += "Inavlid equipped character\n";
-								UserInterface.AddError(error + weapon.ToString());
-								Directory.CreateDirectory(weaponPath);
-								using (var writer = File.CreateText(weaponPath + "log.txt"))
-								{
-									writer.WriteLine($"Version: {Assembly.GetExecutingAssembly().GetName().Version.ToString(3)}");
-									writer.WriteLine($"Resolution: {Navigation.GetWidth()}x{Navigation.GetHeight()}");
-									writer.WriteLine($"Error log:\n\t{error.Replace("\n", "\n\t")}");
-								}
-							}
-
-                            if (!weapon.IsValid() || Settings.LogScreenshots)
-                            {
-                                Directory.CreateDirectory(weaponPath + "name");
-                                imageCollection.Bitmaps[0].Save(weaponPath + "name/name.png");
-                                Directory.CreateDirectory(weaponPath + "rarity");
-                                imageCollection.Bitmaps[0].Save(weaponPath + "rarity/rarity.png");
-                                Directory.CreateDirectory(weaponPath + "level");
-                                imageCollection.Bitmaps[1].Save(weaponPath + "level/level.png");
-                                Directory.CreateDirectory(weaponPath + "refinement");
-                                imageCollection.Bitmaps[2].Save(weaponPath + "refinement/refinement.png");
-                                Directory.CreateDirectory(weaponPath + "equipped");
-                                imageCollection.Bitmaps[4].Save(weaponPath + "equipped/equipped.png");
-
-                                imageCollection.Bitmaps.Last().Save(weaponPath + "card.png");
-								Task.Run(() => LogObject(weapon, weaponPath + "weapon.json"));
-                            }
-
-                            // Dispose of everything
-                            imageCollection.Bitmaps.ForEach(b => b.Dispose());
-							break;
-
-						case "artifact":
-							if (artifactScraper.IsEnhancementMaterial(imageCollection.Bitmaps.Last()))
-							{
-								_logger.LogDebug("Enhancement Material found for artifact #{artifactID}", imageCollection.Id);
-								artifactScraper.StopScanning = true;
-								break;
-							}
-
-							UserInterface.SetGearPictureBox(imageCollection.Bitmaps.Last());
-							// Scan as artifact
-							Artifact artifact = artifactScraper.CatalogueFromBitmapsAsync(imageCollection.Bitmaps, imageCollection.Id).Result;
-							UserInterface.SetGear(imageCollection.Bitmaps.Last(), artifact);
-
-							string artifactPath = $"./logging/artifacts/artifact{artifact.Id}/";
-
-                            if (Settings.LogScreenshots) Directory.CreateDirectory(artifactPath);
-
-							if (artifact.IsValid())
-							{
-								UserInterface.IncrementArtifactCount();
-								Inventory.Add(artifact);
-								if (!string.IsNullOrWhiteSpace(artifact.EquippedCharacter))
-									equippedArtifacts.Add(artifact);
-							}
-							else
-							{
-								UserInterface.AddError($"Unable to validate information for artifact ID#{artifact.Id}");
-								string error = "";
-								if (!artifact.HasValidSlot()) error += "Invalid artifact gear slot\n";
-								if (!artifact.HasValidSetName()) error += "Invalid artifact set name\n";
-								if (!artifact.HasValidRarity()) error += "Invalid artifact rarity\n";
-								if (!artifact.HasValidLevel()) error += "Invalid artifact level\n";
-								if (!artifact.HasValidMainStat()) error += "Invalid artifact main stat\n";
-								if (!artifact.HasValidSubStats()) error += "Invalid artifact sub stats\n";
-								if (!artifact.HasValidEquippedCharacter()) error += "Invalid equipped character\n";
-								UserInterface.AddError(error + artifact.ToString());
-								Directory.CreateDirectory(artifactPath);
-								using (var writer = File.CreateText(artifactPath + "log.txt"))
-								{
-									writer.WriteLine($"Version: {Assembly.GetExecutingAssembly().GetName().Version.ToString(3)}");
-									writer.WriteLine($"Resolution: {Navigation.GetWidth()}x{Navigation.GetHeight()}");
-									writer.WriteLine($"Error Log:\n\t{error.Replace("\n", "\n\t")}");
-								}
-							}
-
-                            if (!artifact.IsValid() || Settings.LogScreenshots)
-                            {
-                                Directory.CreateDirectory(artifactPath + "name");
-                                imageCollection.Bitmaps[0].Save(artifactPath + "name/name.png");
-                                Directory.CreateDirectory(artifactPath + "slot");
-								imageCollection.Bitmaps[1].Save(artifactPath + "slot/slot.png");
-                                Directory.CreateDirectory(artifactPath + "mainstat");
-                                imageCollection.Bitmaps[2].Save(artifactPath + "mainstat/mainstat.png");
-								Directory.CreateDirectory(artifactPath + "level");
-								imageCollection.Bitmaps[3].Save(artifactPath + "level/level.png");
-								Directory.CreateDirectory(artifactPath + "substats");
-								imageCollection.Bitmaps[4].Save(artifactPath + "substats/substats.png");
-								Directory.CreateDirectory(artifactPath + "equipped");
-								imageCollection.Bitmaps[5].Save(artifactPath + "equipped/equipped.png");
-								Directory.CreateDirectory(artifactPath + "locked");
-								imageCollection.Bitmaps[6].Save(artifactPath + "locked/locked.png");
-                                Directory.CreateDirectory(artifactPath + "sanctify");
-                                imageCollection.Bitmaps[7].Save(artifactPath + "sanctify/sanctify.png");
-
-
-                                imageCollection.Bitmaps.Last().Save(artifactPath + "card.png");
-
-								Task.Run(()=>LogObject(artifact, artifactPath + "artifact.json"));
-							}
-
-							// Dispose of everything
-							imageCollection.Bitmaps.ForEach(b => b.Dispose());
-							break;
-
-						case "END":
-							b_threadCancel = true;
-							break;
-
-						default:
-							_logger.LogError("Unknown Image type for Image Processor: {Type}", imageCollection.Type);
-							break;
+						await ProcessImageCollectionAsync(imageCollection).ConfigureAwait(false);
 					}
+					catch (OperationCanceledException)
+					{
+						throw;
 					}
 					catch (Exception ex)
 					{
-						// A single item's processing must never crash the whole worker thread
-						// (and with it the app). This commonly fires when a scan is stopped and the
-						// game window becomes unavailable (e.g. DivideByZeroException from
-						// Navigation.GetAspectRatio when the window width is 0). Log and continue.
 						_logger.LogError(ex, "Failed to process {Type} image #{Id}; skipping.", imageCollection.Type, imageCollection.Id);
 					}
-				}
-				else
-				{
-					// Wait for more images to process
-					Thread.Sleep(250);
+					finally
+					{
+						imageCollection.Bitmaps?.ForEach(b => b?.Dispose());
+					}
 				}
 			}
-			_logger.LogDebug("Thread {threadId} exit", Thread.CurrentThread.ManagedThreadId);
+			catch (OperationCanceledException)
+			{
+				_logger.LogDebug("Worker #{WorkerId} received cancellation", workerId);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Worker #{WorkerId} encountered unexpected error", workerId);
+			}
+			finally
+			{
+				_logger.LogDebug("Worker #{WorkerId} exit", workerId);
+			}
+		}
+
+		private async Task ProcessImageCollectionAsync(OCRImageCollection imageCollection)
+		{
+			switch (imageCollection.Type)
+			{
+				case "weapon":
+					if (weaponScraper.IsEnhancementMaterial(imageCollection.Bitmaps.First()))
+					{
+						_logger.LogDebug("Enhancement Material found for weapon #{weaponID}", imageCollection.Id);
+						weaponScraper.StopScanning = true;
+						return;
+					}
+
+					UserInterface.SetGearPictureBox(imageCollection.Bitmaps.Last());
+
+					// Scan as weapon
+					Weapon weapon = await weaponScraper.CatalogueFromBitmapsAsync(imageCollection.Bitmaps, imageCollection.Id).ConfigureAwait(false);
+					UserInterface.SetGear(imageCollection.Bitmaps.Last(), weapon);
+
+					string weaponPath = $"./logging/weapons/weapon{weapon.Id}/";
+
+					if (Settings.LogScreenshots) Directory.CreateDirectory(weaponPath);
+
+					if (weapon.IsValid())
+					{
+						_logger.LogDebug("Weapon #{Id} validated successfully: {Name} (Rarity: {Rarity}★, Level: {Level}, Refinement: R{Refinement})",
+							weapon.Id, weapon.Name, weapon.Rarity, weapon.Level, weapon.RefinementLevel);
+						UserInterface.IncrementWeaponCount();
+						lock (_inventoryLock)
+						{
+							Inventory.Add(weapon);
+							if (!string.IsNullOrWhiteSpace(weapon.EquippedCharacter))
+								equippedWeapons.Add(weapon);
+						}
+					}
+					else
+					{
+						UserInterface.AddError($"Unable to validate information for weapon ID#{weapon.Id}");
+						string error = "";
+						if (!weapon.HasValidWeaponName()) error += "Invalid weapon name\n"; 
+						if (!weapon.HasValidRarity()) error += "Invalid weapon rarity\n";
+						if (!weapon.HasValidLevel()) error += "Invalid weapon level\n";
+						if (!weapon.HasValidRefinementLevel()) error += "Invalid refinement level\n";
+						if (!weapon.HasValidEquippedCharacter()) error += "Inavlid equipped character\n";
+						UserInterface.AddError(error + weapon.ToString());
+						Directory.CreateDirectory(weaponPath);
+						using (var writer = File.CreateText(weaponPath + "log.txt"))
+						{
+							writer.WriteLine($"Version: {Assembly.GetExecutingAssembly().GetName().Version.ToString(3)}");
+							writer.WriteLine($"Resolution: {Navigation.GetWidth()}x{Navigation.GetHeight()}");
+							writer.WriteLine($"Error log:\n\t{error.Replace("\n", "\n\t")}");
+						}
+					}
+
+					if (!weapon.IsValid() || Settings.LogScreenshots)
+					{
+						Directory.CreateDirectory(weaponPath + "name");
+						imageCollection.Bitmaps[0].Save(weaponPath + "name/name.png");
+						Directory.CreateDirectory(weaponPath + "rarity");
+						imageCollection.Bitmaps[0].Save(weaponPath + "rarity/rarity.png");
+						Directory.CreateDirectory(weaponPath + "level");
+						imageCollection.Bitmaps[1].Save(weaponPath + "level/level.png");
+						Directory.CreateDirectory(weaponPath + "refinement");
+						imageCollection.Bitmaps[2].Save(weaponPath + "refinement/refinement.png");
+						Directory.CreateDirectory(weaponPath + "equipped");
+						imageCollection.Bitmaps[4].Save(weaponPath + "equipped/equipped.png");
+
+						imageCollection.Bitmaps.Last().Save(weaponPath + "card.png");
+						_ = Task.Run(() => LogObject(weapon, weaponPath + "weapon.json"));
+					}
+					break;
+
+				case "artifact":
+					if (artifactScraper.IsEnhancementMaterial(imageCollection.Bitmaps.Last()))
+					{
+						_logger.LogDebug("Enhancement Material found for artifact #{artifactID}", imageCollection.Id);
+						artifactScraper.StopScanning = true;
+						return;
+					}
+
+					UserInterface.SetGearPictureBox(imageCollection.Bitmaps.Last());
+					// Scan as artifact
+					Artifact artifact = await artifactScraper.CatalogueFromBitmapsAsync(imageCollection.Bitmaps, imageCollection.Id).ConfigureAwait(false);
+					UserInterface.SetGear(imageCollection.Bitmaps.Last(), artifact);
+
+					string artifactPath = $"./logging/artifacts/artifact{artifact.Id}/";
+
+					if (Settings.LogScreenshots) Directory.CreateDirectory(artifactPath);
+
+					if (artifact.IsValid())
+					{
+						UserInterface.IncrementArtifactCount();
+						lock (_inventoryLock)
+						{
+							Inventory.Add(artifact);
+							if (!string.IsNullOrWhiteSpace(artifact.EquippedCharacter))
+								equippedArtifacts.Add(artifact);
+						}
+					}
+					else
+					{
+						UserInterface.AddError($"Unable to validate information for artifact ID#{artifact.Id}");
+						string error = "";
+						if (!artifact.HasValidSlot()) error += "Invalid artifact gear slot\n";
+						if (!artifact.HasValidSetName()) error += "Invalid artifact set name\n";
+						if (!artifact.HasValidRarity()) error += "Invalid artifact rarity\n";
+						if (!artifact.HasValidLevel()) error += "Invalid artifact level\n";
+						if (!artifact.HasValidMainStat()) error += "Invalid artifact main stat\n";
+						if (!artifact.HasValidSubStats()) error += "Invalid artifact sub stats\n";
+						if (!artifact.HasValidEquippedCharacter()) error += "Invalid equipped character\n";
+						UserInterface.AddError(error + artifact.ToString());
+						Directory.CreateDirectory(artifactPath);
+						using (var writer = File.CreateText(artifactPath + "log.txt"))
+						{
+							writer.WriteLine($"Version: {Assembly.GetExecutingAssembly().GetName().Version.ToString(3)}");
+							writer.WriteLine($"Resolution: {Navigation.GetWidth()}x{Navigation.GetHeight()}");
+							writer.WriteLine($"Error Log:\n\t{error.Replace("\n", "\n\t")}");
+						}
+					}
+
+					if (!artifact.IsValid() || Settings.LogScreenshots)
+					{
+						Directory.CreateDirectory(artifactPath + "name");
+						imageCollection.Bitmaps[0].Save(artifactPath + "name/name.png");
+						Directory.CreateDirectory(artifactPath + "slot");
+						imageCollection.Bitmaps[1].Save(artifactPath + "slot/slot.png");
+						Directory.CreateDirectory(artifactPath + "mainstat");
+						imageCollection.Bitmaps[2].Save(artifactPath + "mainstat/mainstat.png");
+						Directory.CreateDirectory(artifactPath + "level");
+						imageCollection.Bitmaps[3].Save(artifactPath + "level/level.png");
+						Directory.CreateDirectory(artifactPath + "substats");
+						imageCollection.Bitmaps[4].Save(artifactPath + "substats/substats.png");
+						Directory.CreateDirectory(artifactPath + "equipped");
+						imageCollection.Bitmaps[5].Save(artifactPath + "equipped/equipped.png");
+						Directory.CreateDirectory(artifactPath + "locked");
+						imageCollection.Bitmaps[6].Save(artifactPath + "locked/locked.png");
+						Directory.CreateDirectory(artifactPath + "sanctify");
+						imageCollection.Bitmaps[7].Save(artifactPath + "sanctify/sanctify.png");
+
+						imageCollection.Bitmaps.Last().Save(artifactPath + "card.png");
+
+						_ = Task.Run(() => LogObject(artifact, artifactPath + "artifact.json"));
+					}
+					break;
+
+				default:
+					_logger.LogError("Unknown Image type for Image Processor: {Type}", imageCollection.Type);
+					break;
+			}
 		}
 
         private static void LogObject(object obj, string path)

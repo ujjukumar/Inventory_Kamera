@@ -252,7 +252,7 @@ namespace InventoryKamera
                 return Task.CompletedTask;
             }
             // Send images to Worker Queue
-            InventoryKamera.workerQueue.Enqueue(new OCRImageCollection(artifactImages, "artifact", id));
+            InventoryKamera.Enqueue(new OCRImageCollection(artifactImages, "artifact", id));
             return Task.CompletedTask;
         }
 
